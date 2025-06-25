@@ -3,7 +3,7 @@ import pandas as pd
 import re 
 import os
 import unicodedata
-
+from datetime import datetime
 
 def get_columns_dict(section):
     """
@@ -88,6 +88,31 @@ def parsear_fechas_inteligente(columna, fecha_fallback="2100-12-31"):
 
     return columna.apply(normalizar_fecha)
 
+def combinar_duplicados_por_expediente(df, col_exp):
+    """
+    Elimina duplicados por Nº Expediente combinando datos de varias fuentes:
+    - Para columnas comunes: se queda con el valor no nulo (si hay varios, el primero).
+    - Para 'fuente', 'URL' y 'pdf': se concatenan separados por coma, eliminando duplicados.
+    """
+    def combinar_grupo(grupo):
+        combinado = {}
+        for col in grupo.columns:
+            if col in ['fuente', 'enlace', 'pdf']:
+                # Combina valores únicos no nulos separados por coma
+                valores_unicos = grupo[col].dropna().astype(str).unique()
+                combinado[col] = ", ".join(valores_unicos)
+            else:
+                # Se queda con el primer valor no nulo si hay
+                primer_valor = grupo[col].dropna()
+                combinado[col] = primer_valor.iloc[0] if not primer_valor.empty else None
+        return pd.Series(combinado)
+
+    if col_exp not in df.columns:
+        raise ValueError(f"El DataFrame debe contener la columna {col_exp}.")
+
+    df_sin_duplicados = df.groupby(col_exp, as_index=False).apply(combinar_grupo).reset_index(drop=True)
+    return df_sin_duplicados
+
 
 def filtrar_renombrar_dataframe(df, comunidad, columnas_finales, columnas_iniciales_comunidad, fecha_proceso):
     """
@@ -131,8 +156,7 @@ def filtrar_renombrar_dataframe(df, comunidad, columnas_finales, columnas_inicia
 
     # Añadir columnas extra
     df_final["fuente"] = map_comunidad.get(comunidad,'')
-    df_final["fecha_proceso"] = fecha_proceso
-
+    df_final["fecha_proceso"] = fecha_proceso    
     return df_final
 
 def normalizar_texto(texto):

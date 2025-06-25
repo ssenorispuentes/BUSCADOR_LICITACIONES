@@ -119,7 +119,9 @@ def main(fecha_proceso = None, usar_scraping = True):
     dfs_a_unir = [df for df in [df_and_final, df_esp_final, df_eus_final, df_mad_final] if df is not None]
 
     if dfs_a_unir:
+        print("🔹 Unificando información...")
         df_unificado = pd.concat(dfs_a_unir, ignore_index=True)
+        # df_unificado = functions.combinar_duplicados_por_expediente(df_unificado, col_exp = 'numero_expediente')
         print(f"✅ Unificación completada. Total registros: {df_unificado.shape[0]}")
     else:
         df_unificado = pd.DataFrame()
