@@ -51,14 +51,12 @@ def cargar_datos(output_dir):
 # -------------------------------
 # Aplicar filtros principales
 # -------------------------------
-def aplica_filtros_base(df, fuentes_seleccionadas, fecha_ini, formas_presentacion):
+def aplica_filtros_base(df, fecha_ini, formas_presentacion):
     df_filter = df.copy()
     if fecha_ini and 'Fecha Límite Presentación' in df_filter.columns:
         fechas = pd.to_datetime(df_filter['Fecha Límite Presentación'], errors='coerce').dt.date
         fechas = fechas.fillna(datetime(2100, 12, 31).date())
         df_filter = df_filter[fechas >= fecha_ini]
-    if fuentes_seleccionadas and 'Fuente' in df_filter.columns:
-        df_filter = df_filter[df_filter['Fuente'].isin(fuentes_seleccionadas)]
     if formas_presentacion and 'Forma de presentación' in df_filter.columns:
         df_filter = df_filter[df_filter['Forma de presentación'].isin(formas_presentacion)]
     return df_filter
@@ -92,15 +90,15 @@ def main():
     else:
         st.warning("⚠️ No hay datos de scraping disponibles para mostrar la fecha.")
 
-    # Filtros principales
-    FUENTES = {
-        "España": "España",
-        "Andalucía": "Andalucía",
-        "Comunidad de Madrid": "Comunidad de Madrid",
-        "Euskadi": "Euskadi"
-    }
+    # # Filtros principales
+    # FUENTES = {
+    #     "España": "España",
+    #     "Andalucía": "Andalucía",
+    #     "Comunidad de Madrid": "Comunidad de Madrid",
+    #     "Euskadi": "Euskadi"
+    # }
 
-    fuentes_seleccionadas = st.multiselect("Selecciona una o varias fuentes de datos", options=list(FUENTES.keys()))
+    # fuentes_seleccionadas = st.multiselect("Selecciona una o varias fuentes de datos", options=list(FUENTES.keys()))
     formas_presentacion = st.multiselect("Selecciona formas de presentación", options=['Electrónica', 'Manual', 'Manual y/o Electrónica'])
     fecha_ini = st.date_input("Selecciona mínima fecha límite presentación", value=datetime.today() + timedelta(days=7))    
 
@@ -114,7 +112,7 @@ def main():
             if df is None or df.empty:
                 st.warning("⚠️ No hay datos para buscar licitaciones.")
                 return
-            df_base = aplica_filtros_base(df, fuentes_seleccionadas, fecha_ini, formas_presentacion)
+            df_base = aplica_filtros_base(df, fecha_ini, formas_presentacion)
             st.session_state["df_base"] = df_base
             st.session_state["expedientes_favoritos"] = [e.strip() for e in expedientes_favoritos_input.split(",") if e.strip()]
 
@@ -179,8 +177,10 @@ def main():
         if ("Favorito" in df_filtrado_actual.columns) & ('Favorito' not in cols_mostrar):
             df_style = df_filtrado_actual[cols_mostrar + ["Favorito"]]
         else:
-            df_style = df_filtrado_actual[cols_mostrar]
-
+             df_style = df_filtrado_actual[cols_mostrar]
+      
+        df_style['Favorito'] = df_style['Favorito'].apply(lambda x: "⭐" if x else "")
+        
         st.dataframe(
             df_style.style.apply(resaltar_favoritos, axis=1),
             column_config={"URL": st.column_config.LinkColumn("URL")},
