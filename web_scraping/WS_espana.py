@@ -13,7 +13,9 @@ from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 import re
 import unicodedata
-
+import requests
+from urllib.parse import urlparse
+import fitz
 class ScraperEspana:
     def __init__(self, fecha, config_file="./config/scraper_config.ini", fecha_minima=None):
         config = configparser.ConfigParser()
@@ -30,8 +32,19 @@ class ScraperEspana:
 
         self.MAX_PAGINAS = config.getint("esp_params", "max_paginas", fallback=1)
         self.TIMEOUT = config.getint("esp_params", "timeout", fallback=30)
+        try:
+            ini_fecha_minima = pd.to_datetime(config.get("esp_params", "fecha_minima", fallback="1900-01-01"), dayfirst=True)
+        except:
+            valor_fecha = config.get("esp_params", "fecha_minima", fallback="1900-01-01").strip()
+            try:
+                ini_fecha_minima_datetime= datetime.strptime(valor_fecha, '%d/%m/%Y')
+                ini_fecha_minima = pd.to_datetime(ini_fecha_minima_datetime)
+                if pd.isna(ini_fecha_minima):
+                    raise ValueError(f"Fecha inválida: '{valor_fecha}'")
+            except Exception as e:
+                print(f"⚠️ Error interpretando 'fecha_minima': {e}")
+                ini_fecha_minima = pd.to_datetime("1900-01-01")
 
-        ini_fecha_minima = pd.to_datetime(config.get("esp_params", "fecha_minima", fallback="1900-01-01"), dayfirst=True)
         self.FECHA_MINIMA = fecha_minima if fecha_minima is not None else ini_fecha_minima
 
         self.filters = {k: v for k, v in config.items("esp_filters")}
@@ -76,24 +89,40 @@ class ScraperEspana:
                 By.NAME, "viewns_Z7_AVEQAI930OBRD02JPMTPG21004_:form1:menuFormaPresentacionMAQ1_SistPresent"
             )).select_by_value(self.filters["forma_presentacion"])
 
+
         buscar = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and @value='Buscar']")))
         self.driver.execute_script("arguments[0].click();", buscar)
+
         time.sleep(10)
+        print(f"🔗 URL de resultados: {self.driver.current_url}")
 
     def extraer_detalle(self, enlace):
+        import os
+        import time
+        import requests
+        from datetime import datetime
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+
         detalle = {}
+        wait = WebDriverWait(self.driver, 20)
+
         try:
+            # 👉 Abrir nueva pestaña con el enlace de detalle
             self.driver.execute_script("window.open(arguments[0]);", enlace)
             self.driver.switch_to.window(self.driver.window_handles[1])
             time.sleep(3)
+            print(f"➡️ Detalle abierto correctamente: {enlace}")
 
+            # 👉 Extraer campos generales
             bloques = self.driver.find_elements(By.CSS_SELECTOR, "ul.altoDetalleLicitacion")
             for ul in bloques:
                 try:
-                    label_elem = ul.find_element(By.CSS_SELECTOR, "span.tipo3")
-                    value_elem = ul.find_element(By.CSS_SELECTOR, "span.outputText")
-                    clave = label_elem.get_attribute("title") or label_elem.text.strip()
-                    valor = value_elem.get_attribute("title") or value_elem.text.strip()
+                    label = ul.find_element(By.CSS_SELECTOR, "span.tipo3")
+                    value = ul.find_element(By.CSS_SELECTOR, "span.outputText")
+                    clave = label.get_attribute("title") or label.text.strip()
+                    valor = value.get_attribute("title") or value.text.strip()
 
                     if "fecha" in clave.lower() and "límite" in clave.lower():
                         try:
@@ -102,22 +131,357 @@ class ScraperEspana:
                                 self.driver.close()
                                 self.driver.switch_to.window(self.driver.window_handles[0])
                                 return None
-                        except:
-                            pass
-
+                        except Exception as e:
+                            print(f"⚠️ Error parseando fecha: {e}")
                     detalle[clave] = valor
                 except:
                     continue
 
+            # 👉 Buscar fila con 'pliego' en tabla de documentos
+            fila_pliego = None
+            try:
+                tabla = wait.until(EC.presence_of_element_located((By.ID, "myTablaDetalleVISUOE")))
+                filas = tabla.find_elements(By.XPATH, ".//tr[contains(@class, 'rowClass')]")
+                print(f"📊 Filas en tabla de documentos: {len(filas)}")
+
+                for idx, fila in enumerate(filas):
+                    texto = fila.text.lower()
+                    print(f"🧾 Fila {idx}: {texto}")
+                    if "pliego" in texto:
+                        fila_pliego = fila
+                        break
+            except Exception as e:
+                print(f"❌ Error localizando la tabla de documentos: {e}")
+
+            if not fila_pliego:
+                print("❌ No se encontró fila con 'pliego'")
+                self.driver.close()
+                self.driver.switch_to.window(self.driver.window_handles[0])
+                return detalle
+
+            # 👉 Intentar abrir el HTML del pliego (opcional)
+            enlace_html = None
+            enlaces = fila_pliego.find_elements(By.TAG_NAME, "a")
+            for a in enlaces:
+                if "html" in a.text.strip().lower():
+                    enlace_html = a
+                    break
+
+            if enlace_html:
+                try:
+                    enlace_html.click()
+                    wait.until(lambda d: len(d.window_handles) > 2)
+                    self.driver.switch_to.window(self.driver.window_handles[-1])
+                    time.sleep(3)
+                    print("✅ HTML del pliego abierto")
+
+                    # 👉 Buscar y descargar el PDF del Pliego Prescripciones Técnicas
+                    try:
+                        enlace_pdf = self.driver.find_element(By.XPATH,
+                                                              "//a[contains(text(), 'Pliego Prescripciones Técnicas')]")
+                        href = enlace_pdf.get_attribute("href")
+                        if href:
+                            print(f"📥 Descargando PDF desde: {href}")
+                            os.makedirs("./pdfs", exist_ok=True)
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            nombre_pdf = f"pliego_prescripciones_{timestamp}.pdf"
+                            ruta = os.path.join("./pdfs", nombre_pdf)
+
+                            r = requests.get(href, stream=True)
+                            if r.status_code == 200:
+                                with open(ruta, 'wb') as f:
+                                    for chunk in r.iter_content(1024):
+                                        f.write(chunk)
+                                print(f"✅ PDF guardado en: {ruta}")
+                                detalle["PDF Pliego Prescripciones Técnicas"] = nombre_pdf
+                            else:
+                                print(f"❌ Error HTTP al descargar PDF: {r.status_code}")
+                        else:
+                            print("❌ Enlace al PDF no tiene href")
+                    except Exception as e:
+                        print(f"⚠️ No se encontró el enlace al PDF del pliego: {e}")
+
+                    # ✅ Cerrar pestaña del HTML
+                    self.driver.close()
+                    self.driver.switch_to.window(self.driver.window_handles[1])
+                except Exception as e:
+                    print(f"⚠️ Error al abrir HTML del pliego: {e}")
+            else:
+                print("❌ No se encontró enlace HTML en la fila del pliego")
+
+            # 👉 Cerrar pestaña de detalle y volver
             self.driver.close()
             self.driver.switch_to.window(self.driver.window_handles[0])
-        except:
+
+        except Exception as e:
+            print(f"❌ Error general en extracción de detalle: {e}")
             try:
                 self.driver.close()
                 self.driver.switch_to.window(self.driver.window_handles[0])
             except:
                 pass
+
         return detalle
+
+    # def extraer_detalle(self, enlace):
+    #     import os
+    #     import time
+    #     import requests
+    #     from datetime import datetime
+    #     from selenium.webdriver.common.by import By
+    #     from selenium.webdriver.support.ui import WebDriverWait
+    #     from selenium.webdriver.support import expected_conditions as EC
+    #
+    #     detalle = {}
+    #     wait = WebDriverWait(self.driver, 20)
+    #
+    #     try:
+    #         # Abre nueva pestaña con el enlace principal
+    #         self.driver.execute_script("window.open(arguments[0]);", enlace)
+    #         self.driver.switch_to.window(self.driver.window_handles[1])
+    #         time.sleep(3)
+    #         print(f"➡️ Enlace abierto correctamente: {enlace}")
+    #         print(f"➡️ URL actual (detalle): {self.driver.current_url}")
+    #
+    #         # Extrae campos de detalle generales
+    #         bloques = self.driver.find_elements(By.CSS_SELECTOR, "ul.altoDetalleLicitacion")
+    #         print(f"📑 Bloques de detalle encontrados: {len(bloques)}")
+    #
+    #         for ul in bloques:
+    #             try:
+    #                 label_elem = ul.find_element(By.CSS_SELECTOR, "span.tipo3")
+    #                 value_elem = ul.find_element(By.CSS_SELECTOR, "span.outputText")
+    #                 clave = label_elem.get_attribute("title") or label_elem.text.strip()
+    #                 valor = value_elem.get_attribute("title") or value_elem.text.strip()
+    #
+    #                 if "fecha" in clave.lower() and "límite" in clave.lower():
+    #                     try:
+    #                         fecha_limite = pd.to_datetime(valor, dayfirst=True)
+    #                         if fecha_limite < self.FECHA_MINIMA:
+    #                             self.driver.close()
+    #                             self.driver.switch_to.window(self.driver.window_handles[0])
+    #                             return None
+    #                     except:
+    #                         pass
+    #
+    #                 detalle[clave] = valor
+    #             except:
+    #                 continue
+    #
+    #         # Paso 1: Buscar la fila que contenga "Pliego"
+    #         try:
+    #             print("🔍 Buscando fila con texto 'Pliego' en la tabla de documentos...")
+    #             time.sleep(2)
+    #             tabla = wait.until(EC.presence_of_element_located((By.ID, "myTablaDetalleVISUOE")))
+    #             filas = self.driver.find_elements(By.XPATH,
+    #                                               "//table[@id='myTablaDetalleVISUOE']//tr[contains(@class, 'rowClass')]")
+    #             print(f"📊 Filas encontradas en tabla de documentos: {len(filas)}")
+    #
+    #             fila_pliego = None
+    #             for idx, fila in enumerate(filas):
+    #                 texto = fila.text.lower()
+    #                 print(f"🧾 Fila {idx}: {texto}")
+    #                 if "pliego" in texto:
+    #                     fila_pliego = fila
+    #                     break
+    #
+    #             if not fila_pliego:
+    #                 print("❌ No se encontró ninguna fila que contenga 'pliego'")
+    #                 self.driver.close()
+    #                 self.driver.switch_to.window(self.driver.window_handles[0])
+    #                 return detalle
+    #
+    #             print("🔎 Intentando abrir HTML desde la fila del Pliego...")
+    #             enlace_html = fila_pliego.find_element(By.XPATH, ".//a[contains(text(), 'Html')]")
+    #             enlace_html.click()
+    #
+    #             # Cambiar a la nueva pestaña (donde se abre el HTML)
+    #             wait.until(lambda driver: len(driver.window_handles) > 2)
+    #             self.driver.switch_to.window(self.driver.window_handles[-1])
+    #             time.sleep(3)
+    #             print("✅ HTML de la fila del Pliego abierto")
+    #
+    #             # Paso 2: Buscar el enlace al Pliego Prescripciones Técnicas
+    #             try:
+    #                 print("🔍 Buscando enlace 'Pliego Prescripciones Técnicas'...")
+    #                 enlace_pliego = self.driver.find_element(By.XPATH,
+    #                                                          "//a[contains(text(), 'Pliego Prescripciones Técnicas')]")
+    #                 href = enlace_pliego.get_attribute("href")
+    #
+    #                 if href:
+    #                     print(f"📥 Descargando PDF desde: {href}")
+    #                     os.makedirs("./pdfs", exist_ok=True)
+    #                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    #                     nombre_pdf = f"pliego_prescripciones_{timestamp}.pdf"
+    #                     ruta_destino = os.path.join("./pdfs", nombre_pdf)
+    #
+    #                     r = requests.get(href, stream=True)
+    #                     if r.status_code == 200:
+    #                         with open(ruta_destino, 'wb') as f:
+    #                             for chunk in r.iter_content(1024):
+    #                                 f.write(chunk)
+    #                         print(f"✅ PDF guardado en: {ruta_destino}")
+    #                         detalle["PDF Pliego Prescripciones Técnicas"] = nombre_pdf
+    #                     else:
+    #                         print(f"❌ Fallo al descargar el PDF: {href}")
+    #                 else:
+    #                     print("❌ El enlace no contenía href.")
+    #             except Exception as e:
+    #                 print(f"⚠️ No se encontró el enlace al Pliego: {e}")
+    #                 print(f"📄 HTML actual contiene: {self.driver.page_source[:1000]}...")
+    #
+    #             finally:
+    #                 # Cierra la pestaña del HTML
+    #                 if len(self.driver.window_handles) > 2:
+    #                     self.driver.close()
+    #                     self.driver.switch_to.window(self.driver.window_handles[1])
+    #
+    #         except Exception as e:
+    #             print(f"⚠️ Error accediendo al HTML de la fila del Pliego: {e}")
+    #             print("🧪 fila_pliego sigue en DOM?", fila_pliego.is_displayed())
+    #
+    #             print("❌ No se encontró enlace 'Html' en la fila correspondiente")
+    #             print(f"🔗 Enlace fallido: {enlace}")
+    #             print(f"📄 URL actual del navegador: {self.driver.current_url}")
+    #
+    #         # Cierra la pestaña del detalle
+    #         self.driver.close()
+    #         self.driver.switch_to.window(self.driver.window_handles[0])
+    #
+    #     except Exception as e:
+    #         print(f"❌ Error general en extracción de detalle: {e}")
+    #         try:
+    #             self.driver.close()
+    #             self.driver.switch_to.window(self.driver.window_handles[0])
+    #         except:
+    #             pass
+    #
+    #     return detalle
+
+    # def extraer_detalle(self, enlace):
+    #     import os
+    #     import time
+    #     import requests
+    #     from datetime import datetime
+    #     from selenium.webdriver.common.by import By
+    #     from selenium.webdriver.support.ui import WebDriverWait
+    #     from selenium.webdriver.support import expected_conditions as EC
+    #
+    #     detalle = {}
+    #     wait = WebDriverWait(self.driver, 20)
+    #
+    #     try:
+    #         # Abre nueva pestaña con el enlace principal
+    #         self.driver.execute_script("window.open(arguments[0]);", enlace)
+    #         self.driver.switch_to.window(self.driver.window_handles[1])
+    #         time.sleep(3)
+    #         print(f"➡️ Enlace abierto correctamente: {enlace}")
+    #         print(f"➡️ URL actual (detalle): {self.driver.current_url}")
+    #
+    #         # Extrae campos de detalle generales
+    #         bloques = self.driver.find_elements(By.CSS_SELECTOR, "ul.altoDetalleLicitacion")
+    #         print(f"📑 Bloques de detalle encontrados: {len(bloques)}")
+    #
+    #         for ul in bloques:
+    #             try:
+    #                 label_elem = ul.find_element(By.CSS_SELECTOR, "span.tipo3")
+    #                 value_elem = ul.find_element(By.CSS_SELECTOR, "span.outputText")
+    #                 clave = label_elem.get_attribute("title") or label_elem.text.strip()
+    #                 valor = value_elem.get_attribute("title") or value_elem.text.strip()
+    #
+    #                 if "fecha" in clave.lower() and "límite" in clave.lower():
+    #                     try:
+    #                         fecha_limite = pd.to_datetime(valor, dayfirst=True)
+    #                         if fecha_limite < self.FECHA_MINIMA:
+    #                             self.driver.close()
+    #                             self.driver.switch_to.window(self.driver.window_handles[0])
+    #                             return None
+    #                     except:
+    #                         pass
+    #
+    #                 detalle[clave] = valor
+    #             except:
+    #                 continue
+    #
+    #         # Paso 1: ir al HTML de la última fila
+    #         try:
+    #             print("🔍 Buscando última fila de la tabla de documentos...")
+    #             time.sleep(1)
+    #             tabla = wait.until(EC.presence_of_element_located((By.ID, "myTablaDetalleVISUOE")))
+    #             filas = self.driver.find_elements(By.XPATH,
+    #                                               "//table[@id='myTablaDetalleVISUOE']//tr[contains(@class, 'rowClass')]")
+    #             print(f"📊 Filas encontradas en tabla de documentos: {len(filas)}")
+    #             for idx, fila in enumerate(filas):
+    #                 print(f"🧾 Fila {idx}: {fila.text}")
+    #
+    #             ultima_fila = filas[-1]
+    #             print(f"🔎 Intentando abrir HTML de la última fila para enlace: {self.driver.current_url}")
+    #
+    #             enlace_html = ultima_fila.find_element(By.XPATH, ".//a[contains(text(), 'Html')]")
+    #             enlace_html.click()
+    #
+    #             # Cambiar a la nueva pestaña (donde se abre el HTML)
+    #             wait.until(lambda driver: len(driver.window_handles) > 2)
+    #             self.driver.switch_to.window(self.driver.window_handles[-1])
+    #             time.sleep(3)
+    #             print("✅ HTML de la última fila abierto")
+    #
+    #             # Paso 2: Buscar el enlace "Pliego Prescripciones Técnicas" y descargarlo
+    #             try:
+    #                 print("🔍 Buscando enlace 'Pliego Prescripciones Técnicas'...")
+    #                 enlace_pliego = self.driver.find_element(By.XPATH,
+    #                                                          "//a[contains(text(), 'Pliego Prescripciones Técnicas')]")
+    #                 href = enlace_pliego.get_attribute("href")
+    #
+    #                 if href:
+    #                     print(f"📥 Descargando PDF desde: {href}")
+    #                     os.makedirs("./pdfs", exist_ok=True)
+    #                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    #                     nombre_pdf = f"pliego_prescripciones_{timestamp}.pdf"
+    #                     ruta_destino = os.path.join("./pdfs", nombre_pdf)
+    #
+    #                     r = requests.get(href, stream=True)
+    #                     if r.status_code == 200:
+    #                         with open(ruta_destino, 'wb') as f:
+    #                             for chunk in r.iter_content(1024):
+    #                                 f.write(chunk)
+    #                         print(f"✅ PDF guardado en: {ruta_destino}")
+    #                         detalle["PDF Pliego Prescripciones Técnicas"] = nombre_pdf
+    #                     else:
+    #                         print(f"❌ Fallo al descargar el PDF: {href}")
+    #                 else:
+    #                     print("❌ El enlace no contenía href.")
+    #             except Exception as e:
+    #                 print(f"⚠️ No se encontró el enlace al Pliego: {e}")
+    #                 print(f"📄 HTML actual contiene: {self.driver.page_source[:1000]}...")
+    #
+    #             finally:
+    #                 # Cierra la pestaña del HTML
+    #                 if len(self.driver.window_handles) > 2:
+    #                     self.driver.close()
+    #                     self.driver.switch_to.window(self.driver.window_handles[1])
+    #
+    #         except Exception as e:
+    #             print(f"⚠️ Error accediendo al HTML de la última fila: {e}")
+    #             print("❌ No se encontró enlace 'Html' en la última fila")
+    #             print(f"🔗 Enlace fallido: {enlace}")  # Este es el enlace principal de la licitación
+    #             print(f"📄 URL actual del navegador: {self.driver.current_url}")  # Por si estás en la página equivocada
+    #
+    #
+    #         # Cierra la pestaña del detalle
+    #         self.driver.close()
+    #         self.driver.switch_to.window(self.driver.window_handles[0])
+    #
+    #     except Exception as e:
+    #         print(f"❌ Error general en extracción de detalle: {e}")
+    #         try:
+    #             self.driver.close()
+    #             self.driver.switch_to.window(self.driver.window_handles[0])
+    #         except:
+    #             pass
+    #
+    #     return detalle
+
 
     def extraer_pagina(self):
         licitaciones = []
@@ -239,6 +603,14 @@ class ScraperEspana:
             filename = os.path.join(self.OUTPUT_DIR, f"licitaciones_espana_{self.fecha}.csv")
             df.to_csv(filename, index=False,sep="\t", encoding="utf-8-sig")
             print(f"✅ Archivo guardado: {filename}")
+            # Cantidad de NaNs (vacíos)
+            nulos = df['pdf_pliego_prescripciones_tecnicas'].isna().sum()
+            # Cantidad de no nulos (con valor)
+            no_nulos = df['pdf_pliego_prescripciones_tecnicas'].notna().sum()
+            total = nulos + no_nulos
+            print(f"🟡 PDFs descargados con éxito en la página de gobierno de España: {no_nulos}/{total} ")
+            df[['pdf_pliego_prescripciones_tecnicas', 'enlace_a_la_licitacion']].to_csv(
+                '/home/sara/Documentos/TMC_2025/proyectos_internos/licitaciones/BUSCADOR_LICITACIONES/datos_licitaciones_final/chequeo_pdf_licitacion.csv')
             return df
         finally:
             self.driver.quit()
