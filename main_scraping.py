@@ -37,17 +37,17 @@ def main(fecha_proceso = None, usar_scraping = True):
 
         df_and = df_esp = df_eus = df_mad = None
         # Ejecutar scrapers
-        print("🟢 Ejecutando scraper Andalucía...")
-        df_and = ScraperAndalucia(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
+        # print("🟢 Ejecutando scraper Andalucía...")
+        # df_and = ScraperAndalucia(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
 
         print("🟢 Ejecutando scraper Estado...")
         df_esp = ScraperEspana(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
 
-        print("🟢 Ejecutando scraper Euskadi...")
-        df_eus = ScraperEuskadi(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
-
-        print("🟢 Ejecutando scraper Madrid...")
-        df_mad = ScraperMadrid(fecha = fecha_ejecucion, config_file = config_path, fecha_minima = fecha_minima).ejecutar()
+        # print("🟢 Ejecutando scraper Euskadi...")
+        # df_eus = ScraperEuskadi(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
+        #
+        # print("🟢 Ejecutando scraper Madrid...")
+        # df_mad = ScraperMadrid(fecha = fecha_ejecucion, config_file = config_path, fecha_minima = fecha_minima).ejecutar()
     else:
         print(f"🟢 Leyendo ficheros de licitaciones...")
         # 🟠 Leer datos desde CSVs en carpeta de datos
@@ -55,8 +55,8 @@ def main(fecha_proceso = None, usar_scraping = True):
         df_and = df_esp = df_eus = df_mad = None
         try:
             print("🟢 Fichero Andalucía...")
-            df_and = functions.leer_fichero_licitaciones(input_dir = input_dir, 
-                                                         comunidad = 'andalucia', 
+            df_and = functions.leer_fichero_licitaciones(input_dir = input_dir,
+                                                         comunidad = 'andalucia',
                                                          sep = '\t',
                                                          fecha_proceso = fecha_proceso)
         except Exception as e:
@@ -73,8 +73,8 @@ def main(fecha_proceso = None, usar_scraping = True):
 
         try:
             print("🟢 Fichero Euskadi...")
-            df_eus = functions.leer_fichero_licitaciones(input_dir = input_dir, 
-                                                         comunidad = 'euskadi', 
+            df_eus = functions.leer_fichero_licitaciones(input_dir = input_dir,
+                                                         comunidad = 'euskadi',
                                                          sep ="\t",
                                                          fecha_proceso = fecha_proceso)
         except Exception as e:
@@ -82,8 +82,8 @@ def main(fecha_proceso = None, usar_scraping = True):
 
         try:
             print("🟢 Fichero Madrid...")
-            df_mad = functions.leer_fichero_licitaciones(input_dir = input_dir, 
-                                                comunidad = 'madrid', 
+            df_mad = functions.leer_fichero_licitaciones(input_dir = input_dir,
+                                                comunidad = 'madrid',
                                                 sep ="\t",
                                                 fecha_proceso = fecha_proceso)
         except Exception as e:

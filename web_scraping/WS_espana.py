@@ -151,7 +151,7 @@ class ScraperEspana:
                         fila_pliego = fila
                         break
             except Exception as e:
-                print(f"❌ Error localizando la tabla de documentos: {e}")
+                print(f"❌ Error localizando la tabla de documentos")
 
             if not fila_pliego:
                 print("❌ No se encontró fila con 'pliego'")
