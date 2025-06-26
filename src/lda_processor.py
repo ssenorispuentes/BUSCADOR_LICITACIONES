@@ -76,11 +76,12 @@ class LicitacionTextProcessor:
         # 1️⃣ Normaliza texto y elimina puntuación
         texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8").lower()
         texto = texto.translate(str.maketrans('', '', string.punctuation))
-        # 2️⃣ Tokenización simple por espacio
-        palabras = texto.split()
-
+        lista_de_frases = texto.split()
         # 3️⃣ Filtra por stopwords originales (sin lematizar)
-        palabras_filtradas = [p for p in palabras if p not in self.stop_custom_completed]
+        palabras_filtradas = [
+            " ".join([p for p in frase.split() if p.lower() not in self.stop_custom_completed])
+            for frase in lista_de_frases
+        ]
 
         # 4️⃣ Ahora pasa solo esas palabras por spaCy y extrae lemas
         doc = self.nlp(" ".join(palabras_filtradas))
@@ -88,34 +89,13 @@ class LicitacionTextProcessor:
             token.lemma_ for token in doc
             if token.is_alpha and token.lemma_ not in self.stop_custom_completed
         ]
+        self.lista_frases = lista_de_frases
         self.doc = doc
         self.lemas_filtrados = lemas_filtrados
         lemas_string = " ".join(lemas_filtrados)
        # lemas_string_filtrados  = [p for p in lemas_string.split() if p not in self.stop_custom_completed]
 
         return lemas_string
-
-    # def _limpiar_texto(self, texto):
-    #     print(f"🧹 Limpiando texto...")
-    #     texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8").lower()
-    #     texto = texto.translate(str.maketrans('', '', string.punctuation))
-    #     texto = texto.replace("\n", " ")
-    #     texto_filtrado = " ".join([
-    #         palabra for palabra in texto.split()
-    #         if palabra not in self.stop_custom_completed
-    #     ])
-    #
-    #     self.texto_filtrado = texto_filtrado
-    #
-    #
-    #     doc = self.nlp(texto_filtrado)
-    #     tokens = [
-    #         token.lemma_ for token in doc
-    #         if token.is_alpha and not token.is_stop and token.lemma_ not in self.stop_custom_completed
-    #     ]
-    #     self.tokens_comprobar = tokens
-    #     self.doc = doc
-    #     return " ".join(tokens)
 
     def procesar_textos(self):
         print("🚀 Procesando textos de los PDFs...")
@@ -129,6 +109,8 @@ class LicitacionTextProcessor:
             texto = self._extraer_texto_pdf(ruta)
 
             limpio = self._limpiar_texto(texto)
+            if 'el' in limpio:
+                print('stop')
             encontrado = re.search(r"\bel\b", limpio)
             textos.append(limpio)
         self.textos_limpios = textos
