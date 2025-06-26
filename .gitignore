@@ -4,3 +4,4 @@ env/
 *.csv
 *pdf
 *.pyc
+.idea/workspace.xml
