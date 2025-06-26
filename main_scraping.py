@@ -30,8 +30,7 @@ def main(fecha_proceso = None, usar_scraping = True):
     columns_mad = functions.get_columns_dict(columns_ini["mad_columns_order"])
     hoy = datetime.today()
     fecha_ejecucion = fecha_proceso if fecha_proceso else hoy.date()
-    print('BORRAR SIGUIENTE LINEA EN LA VERSIÓN FINAL--->')
-    usar_scraping = False
+
     if usar_scraping:
         
         fecha_minima = hoy + timedelta(days=15)
