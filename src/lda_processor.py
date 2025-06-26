@@ -8,6 +8,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from gensim import corpora, models
 import spacy
 import configparser
+import nltk
+from nltk.corpus import stopwords
+
+# Descargar solo una vez
+nltk.download('stopwords')
+
 
 class LicitacionTextProcessor:
     def __init__(self, df, config_file="./config/scraper_config.ini"):
@@ -40,6 +46,7 @@ class LicitacionTextProcessor:
             "cuya", "cuyas","el", "él", "ella", "ellos", "ellas", "usted", "ustedes", "nosotros", "nosotras",
             "vosotros", "vosotras", "mio", "mía", "míos", "mías", "tuyo", "tuya", "tuyos", "tuyas"
         }
+        self.stop_custom_completed = set(stopwords.words('spanish')) | self.stop_custom
         self.textos_limpios = []
 
     def _get_keywords(self, section):
@@ -59,16 +66,56 @@ class LicitacionTextProcessor:
             print(f"⚠️ Error leyendo {ruta}: {e}")
             return ""
 
+    import re
+    import string
+    import unicodedata
+
     def _limpiar_texto(self, texto):
-        print(f"🧹 Limpiando texto...")
+        print("🧹 Limpiando texto...")
+
+        # 1️⃣ Normaliza texto y elimina puntuación
         texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8").lower()
         texto = texto.translate(str.maketrans('', '', string.punctuation))
-        doc = self.nlp(texto)
-        tokens = [
+        # 2️⃣ Tokenización simple por espacio
+        palabras = texto.split()
+
+        # 3️⃣ Filtra por stopwords originales (sin lematizar)
+        palabras_filtradas = [p for p in palabras if p not in self.stop_custom_completed]
+
+        # 4️⃣ Ahora pasa solo esas palabras por spaCy y extrae lemas
+        doc = self.nlp(" ".join(palabras_filtradas))
+        lemas_filtrados = [
             token.lemma_ for token in doc
-            if token.is_alpha and not token.is_stop and token.lemma_ not in self.stop_custom
+            if token.is_alpha and token.lemma_ not in self.stop_custom_completed
         ]
-        return " ".join(tokens)
+        self.doc = doc
+        self.lemas_filtrados = lemas_filtrados
+        lemas_string = " ".join(lemas_filtrados)
+       # lemas_string_filtrados  = [p for p in lemas_string.split() if p not in self.stop_custom_completed]
+
+        return lemas_string
+
+    # def _limpiar_texto(self, texto):
+    #     print(f"🧹 Limpiando texto...")
+    #     texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8").lower()
+    #     texto = texto.translate(str.maketrans('', '', string.punctuation))
+    #     texto = texto.replace("\n", " ")
+    #     texto_filtrado = " ".join([
+    #         palabra for palabra in texto.split()
+    #         if palabra not in self.stop_custom_completed
+    #     ])
+    #
+    #     self.texto_filtrado = texto_filtrado
+    #
+    #
+    #     doc = self.nlp(texto_filtrado)
+    #     tokens = [
+    #         token.lemma_ for token in doc
+    #         if token.is_alpha and not token.is_stop and token.lemma_ not in self.stop_custom_completed
+    #     ]
+    #     self.tokens_comprobar = tokens
+    #     self.doc = doc
+    #     return " ".join(tokens)
 
     def procesar_textos(self):
         print("🚀 Procesando textos de los PDFs...")
@@ -80,7 +127,9 @@ class LicitacionTextProcessor:
                 continue
             ruta = os.path.join(self.input_dir_pdf, nombre_pdf)
             texto = self._extraer_texto_pdf(ruta)
+
             limpio = self._limpiar_texto(texto)
+            encontrado = re.search(r"\bel\b", limpio)
             textos.append(limpio)
         self.textos_limpios = textos
         self.df["texto_limpio"] = textos
