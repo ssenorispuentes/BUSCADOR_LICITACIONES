@@ -1,18 +1,20 @@
-import os
-import time
 import configparser
 import pandas as pd
-from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 import re
 import unicodedata
+import os
+import time
+import requests
+from datetime import datetime
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 class ScraperEspana:
     def __init__(self, fecha, config_file="./config/scraper_config.ini", fecha_minima=None):
@@ -31,10 +33,11 @@ class ScraperEspana:
 
         self.MAX_PAGINAS = config.getint("esp_params", "max_paginas", fallback=1)
         self.TIMEOUT = config.getint("esp_params", "timeout", fallback=30)
+        self.fecha_minima = fecha_minima
         try:
-            ini_fecha_minima = pd.to_datetime(config.get("esp_params", "fecha_minima", fallback="1900-01-01"), dayfirst=True)
+            ini_fecha_minima = pd.to_datetime(self.fecha_minima, dayfirst=True, format='%d/%m/%Y')
         except:
-            valor_fecha = config.get("esp_params", "fecha_minima", fallback="1900-01-01").strip()
+            valor_fecha = '01/01/2025'
             try:
                 ini_fecha_minima_datetime= datetime.strptime(valor_fecha, '%d/%m/%Y')
                 ini_fecha_minima = pd.to_datetime(ini_fecha_minima_datetime)
@@ -42,9 +45,6 @@ class ScraperEspana:
                     raise ValueError(f"Fecha inválida: '{valor_fecha}'")
             except Exception as e:
                 print(f"⚠️ Error interpretando 'fecha_minima': {e}")
-                ini_fecha_minima = pd.to_datetime("1900-01-01")
-
-        self.FECHA_MINIMA = fecha_minima if fecha_minima is not None else ini_fecha_minima
 
         self.filters = {k: v for k, v in config.items("esp_filters")}
         self.fecha = fecha
@@ -96,13 +96,7 @@ class ScraperEspana:
         print(f"🔗 URL de resultados: {self.driver.current_url}")
 
     def extraer_detalle(self, enlace):
-        import os
-        import time
-        import requests
-        from datetime import datetime
-        from selenium.webdriver.common.by import By
-        from selenium.webdriver.support.ui import WebDriverWait
-        from selenium.webdriver.support import expected_conditions as EC
+
 
         detalle = {}
         wait = WebDriverWait(self.driver, 20)
@@ -126,7 +120,7 @@ class ScraperEspana:
                     if "fecha" in clave.lower() and "límite" in clave.lower():
                         try:
                             fecha_limite = pd.to_datetime(valor, dayfirst=True)
-                            if fecha_limite < self.FECHA_MINIMA:
+                            if fecha_limite < self.fecha_minima:
                                 self.driver.close()
                                 self.driver.switch_to.window(self.driver.window_handles[0])
                                 return None

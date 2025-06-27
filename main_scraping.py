@@ -30,7 +30,7 @@ def main(fecha_proceso = None, usar_scraping = True):
     columns_mad = functions.get_columns_dict(columns_ini["mad_columns_order"])
     hoy = datetime.today()
     fecha_ejecucion = fecha_proceso if fecha_proceso else hoy.date()
-
+    usar_scraping = True
     if usar_scraping:
         
         fecha_minima = hoy + timedelta(days=15)
@@ -38,7 +38,7 @@ def main(fecha_proceso = None, usar_scraping = True):
         df_and = df_esp = df_eus = df_mad = None
         # Ejecutar scrapers
         print("🟢 Ejecutando scraper Andalucía...")
-        df_and = ScraperAndalucia(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
+        #df_and = ScraperAndalucia(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
 
         print("🟢 Ejecutando scraper Estado...")
         df_esp = ScraperEspana(fecha = fecha_ejecucion, config_file = config_path).ejecutar()

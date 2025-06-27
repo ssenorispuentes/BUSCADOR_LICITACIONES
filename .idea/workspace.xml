@@ -5,10 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bc247871-cf9b-42e9-a003-d6b063eea6d5" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/csv-editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/csv-editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/scraper_columns.ini" beforeDir="false" afterPath="$PROJECT_DIR$/config/scraper_columns.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main_scraping.py" beforeDir="false" afterPath="$PROJECT_DIR$/main_scraping.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web_scraping/WS_espana.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_scraping/WS_espana.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -176,32 +174,32 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>184</line>
+          <line>167</line>
           <option name="timeStamp" value="35" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>166</line>
+          <line>146</line>
           <option name="timeStamp" value="36" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>135</line>
+          <line>124</line>
           <option name="timeStamp" value="50" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>97</line>
+          <line>70</line>
           <option name="timeStamp" value="51" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>134</line>
+          <line>123</line>
           <option name="timeStamp" value="52" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>86</line>
+          <line>69</line>
           <option name="timeStamp" value="53" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
