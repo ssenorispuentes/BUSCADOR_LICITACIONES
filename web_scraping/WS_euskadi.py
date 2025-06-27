@@ -24,7 +24,7 @@ class ScraperEuskadi:
     extrae datos de la tabla y detalles de cada licitación.
     """
 
-    def __init__(self, fecha, config_file="./config/scraper_config.ini"):
+    def __init__(self, fecha, fecha_minima, config_file="./config/scraper_config.ini"):
         """
         Inicializa el scraper:
         - Lee la configuración desde el archivo INI.
@@ -47,7 +47,7 @@ class ScraperEuskadi:
         max_paginas_str = config.get(params, "max_paginas", fallback="None")
         self.MAX_PAGINAS = None if (max_paginas_str.strip().lower() in ["none", ""]) else int(max_paginas_str)
         self.TIMEOUT = config.getint(params, "timeout", fallback=30)
-        self.FECHA_MINIMA = pd.to_datetime(config.get(params, "fecha_minima", fallback="1900-01-01"), dayfirst=True)
+        self.FECHA_MINIMA = fecha_minima
         self.fecha = fecha 
 
         options = Options()

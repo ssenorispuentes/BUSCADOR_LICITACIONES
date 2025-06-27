@@ -47,6 +47,11 @@ class ScraperEspana:
                 print(f"⚠️ Error interpretando 'fecha_minima': {e}")
 
         self.filters = {k: v for k, v in config.items("esp_filters")}
+        # Tras cargar los filtros
+        for key, value in self.filters.items():
+            if 'None' in value or  value == '':  # Si el valor es el string 'None'
+                self.filters[key] = None
+
         self.fecha = fecha
         options = Options()
         options.add_argument("--headless")
@@ -336,11 +341,15 @@ class ScraperEspana:
             df.to_csv(filename, index=False,sep="\t", encoding="utf-8-sig")
             print(f"✅ Archivo guardado: {filename}")
             # Cantidad de NaNs (vacíos)
-            nulos = df['pdf_pliego_prescripciones_tecnicas'].isna().sum()
-            # Cantidad de no nulos (con valor)
-            no_nulos = df['pdf_pliego_prescripciones_tecnicas'].notna().sum()
-            total = nulos + no_nulos
-            print(f"🟡 PDFs descargados con éxito en la página de gobierno de España: {no_nulos}/{total} ")
+            if 'pdf_pliego_prescripciones_tecnicas' not in df.columns:
+                df['pdf_pliego_prescripciones_tecnicas'] = None
+                nulos = df['pdf_pliego_prescripciones_tecnicas'].isna().sum()
+                # Cantidad de no nulos (con valor)
+                no_nulos = df['pdf_pliego_prescripciones_tecnicas'].notna().sum()
+                total = nulos + no_nulos
+                print(f"🟡 PDFs descargados con éxito en la página de gobierno de España: {no_nulos}/{total} ")
+            else:
+                print('No se encuentra información de Pliego en el detalle de la licitación')
             return df
         finally:
             self.driver.quit()

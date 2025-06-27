@@ -45,7 +45,10 @@ def cargar_datos(output_dir):
     csv_path = os.path.join(output_dir, filename)
     if not os.path.exists(csv_path):
         return None, csv_path
-    df = pd.read_csv(csv_path, sep="\t", encoding="utf-8-sig")
+    #df = pd.read_csv(csv_path, sep="\t", encoding="utf-8-sig")
+    df = pd.read_csv(csv_path, sep=",",on_bad_lines='skip')
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
     return df, csv_path
 
 # -------------------------------
@@ -73,6 +76,9 @@ def main():
 
     if df is not None and not df.empty:
         df = df.rename(columns=rename_dict)
+        print('----------------------------------------------------------------')
+        print(df.columns)
+        print('----------------------------------------------------------------')
         if 'Fecha Ejecución Proceso' in df.columns:
             fechas_proceso = pd.to_datetime(df['Fecha Ejecución Proceso'], errors='coerce').dropna()
             if not fechas_proceso.empty:
@@ -128,7 +134,9 @@ def main():
 
     # Base de datos para mostrar
     df_base = df.copy()
+
     df_base["Favorito"] = df_base["Nº Expediente"].astype(str).isin(st.session_state.get("expedientes_favoritos", []))
+
     df_favoritos = df_base[df_base["Favorito"]].copy()
     df_no_favoritos = df_base[~df_base["Favorito"]].copy()
 

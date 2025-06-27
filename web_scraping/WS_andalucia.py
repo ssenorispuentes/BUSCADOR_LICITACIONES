@@ -35,7 +35,7 @@ class ScraperAndalucia:
     - Guarda los resultados en un archivo CSV en el directorio especificado.
     """
 
-    def __init__(self, fecha, config_file="./config/scraper_config.ini"):
+    def __init__(self, fecha, fecha_minima, config_file="./config/scraper_config.ini"):
         """
         Inicializa el scraper:
         - Lee la configuración desde un archivo INI.
@@ -62,6 +62,7 @@ class ScraperAndalucia:
             raise ValueError("❌ La URL de Andalucía no está definida en el archivo de configuración")
 
         self.params = {k: v for k, v in config.items(filters)}
+        self.params["fechaDesde"] = fecha_minima
         self.BASE_URL = f"{self.BASE}?{urlencode(self.params)}"
         self.fecha = fecha 
 

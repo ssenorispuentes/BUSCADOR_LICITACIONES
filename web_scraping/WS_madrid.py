@@ -33,12 +33,13 @@ class ScraperMadrid:
 
         self.TIMEOUT = config.getint(params, "timeout", fallback=30)
         self.DELAY = config.getint(params, "delay", fallback=2)
-
-        ini_fecha_minima = pd.to_datetime(config.get(params, "fecha_minima", fallback="1900-01-01"), dayfirst=True)
-        self.FECHA_MINIMA = fecha_minima if fecha_minima is not None else ini_fecha_minima
+        self.FECHA_MINIMA = fecha_minima
 
         # Filtros desde ini
         self.params = {k: v for k, v in config.items(filters)}
+        for key, value in self.params.items():
+            if 'None' in value or  value == '':  # Si el valor es el string 'None'
+                self.params[key] = None
         self.params['page'] = 0
 
         # Sesión HTTP
