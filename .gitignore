@@ -5,3 +5,7 @@ env/
 *pdf
 *.pyc
 .idea/workspace.xml
+
+__pycache__/
+*.py[cod]
+*.pyo

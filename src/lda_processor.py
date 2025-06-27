@@ -1,18 +1,12 @@
-import os
+import fitz  # PyMuPDF
 import unicodedata
 import string
-import re
-import pandas as pd
-from PyPDF2 import PdfReader
-from sklearn.feature_extraction.text import TfidfVectorizer
-from gensim import corpora, models
 import spacy
+import gensim
+from gensim import corpora
 import configparser
-import nltk
 from nltk.corpus import stopwords
-
-# Descargar solo una vez
-nltk.download('stopwords')
+import os
 
 
 class LicitacionTextProcessor:
@@ -20,33 +14,29 @@ class LicitacionTextProcessor:
         self.df = df.copy()
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
+
         self.input_dir_pdf = self.config.get('input_output_path', 'output_dir_pdf', fallback="./pdfs")
 
         self.palabras_tecnologia = self._get_keywords('palabras_clave_tecnologia')
         self.palabras_descartes = self._get_keywords('palabras_descarte_tecnologia')
-
+        
+        #  Cargar modelo de spaCy en español
         self.nlp = spacy.load("es_core_news_sm")
-        self.stop_custom = {
-            "asi", "tambien", "puede", "ser", "etc", "mediante", "mismo", "dicho",
-            "cual", "cuales", "cada", "otro", "otros", "otra", "otras",
-            "aqui", "ahi", "alli", "hacia", "dentro", "fuera", "detras",
-            "antes", "despues", "durante", "sobre", "bajo", "entre", "segun",
-            "conforme", "seguridad", "respecto", "acuerdo", "base",
-            "caso", "casos", "tipo", "tipos", "forma", "formas", "modo", "modos",
-            "vez", "veces", "parte", "partes", "mayor", "menor", "mucha", "mucho", 
-            "muchos", "muchas", "poco", "pocos", "poca", "pocas", "alguno", "algunos",
-            "ninguno", "ninguna", "misma", "mismas", "propio", "propios", "propia", 
-            "propias", "cierto", "ciertos", "cierta", "ciertas", "general", "generales",
-            "primero", "primera", "primeros", "primeras", "segundo", "segunda",
-            "segundos", "segundas", "nuevo", "nueva", "nuevos", "nuevas",
-            "actual", "actuales", "anterior", "anteriores", "posterior", "posteriores",
-            "ejemplo", "ejemplos", "posible", "posibles", "realizacion", "realizar", 
-            "realiza", "realizado", "realizados", "realizada", "realizadas",
-            "respectivo", "respectivos", "respectiva", "respectivas", "cuyo", "cuyos",
-            "cuya", "cuyas","el", "él", "ella", "ellos", "ellas", "usted", "ustedes", "nosotros", "nosotras",
-            "vosotros", "vosotras", "mio", "mía", "míos", "mías", "tuyo", "tuya", "tuyos", "tuyas"
-        }
+        self.nlp.max_length = 2000000  
+
+        self.stop_custom = {'mucha', 'casos', 'alli','actuales', 'mio', 'poca', 'respectiva', 'ninguna', 'pocas', 
+                            'actual','tambien', 'tipo', 'misma', 'cierto', 'veces', 'dentro', 'cierta', 'menor', 'ejemplo',
+                            'partes','generales', 'forma', 'cuyas', 'muchas', 'realizadas', 'posible', 'respectivos', 'nueva', 
+                             'ciertos', 'modo', 'segundo', 'ser', 'realizado', 'primera', 'realizada', 'respectivo', 'formas', 
+                             'primeras', 'propias', 'nuevos', 'vez', 'tipos', 'dicho', 'base', 'mediante', 'posibles', 
+                             'propio', 'respectivas', 'realizar', 'bajo', 'realizados', 'realiza', 'aqui', 'acuerdo', 'pocos',
+                               'nuevo', 'anterior', 'posteriores', 'primero', 'general', 'alguno', 'cuya', 
+                               'mismas', 'puede', 'despues', 'ejemplos', 'mismo', 'nuevas', 'segun', 'asi', 'ninguno', 
+                               'ciertas', 'detras', 'cuales', 'segundos', 'ahi', 'propia', 'cuyo', 'segunda', 'primeros', 
+                               'caso', 'realizacion', 'modos', 'conforme', 'hacia', 'cada', 'usted', 'mayor', 'propios', 
+                               'posterior', 'respecto', 'segundas', 'anteriores', 'etc', 'parte', 'cuyos', 'ustedes'}
         self.stop_custom_completed = set(stopwords.words('spanish')) | self.stop_custom
+
         self.textos_limpios = []
 
     def _get_keywords(self, section):
@@ -54,152 +44,151 @@ class LicitacionTextProcessor:
             return []
         return list(self.config.options(section))
 
+   # Función para leer PDF
     def _extraer_texto_pdf(self, ruta):
         print(f"📄 Extrayendo texto de: {ruta}")
         try:
-            lector = PdfReader(ruta)
+            doc = fitz.open(ruta)
             texto = ""
-            for pagina in lector.pages:
-                texto += pagina.extract_text() or ""
+            for pagina in doc:
+                texto += pagina.get_text()
             return texto
         except Exception as e:
             print(f"⚠️ Error leyendo {ruta}: {e}")
             return ""
+        
+    #  Limpiar y lematizar texto
+    def _limpiar_y_tokenizar(self, texto):
+        print("🧹 Limpiando y tokenizando texto...")
 
-    import re
-    import string
-    import unicodedata
-
-    def _limpiar_texto(self, texto):
-        print("🧹 Limpiando texto...")
-
-        # 1️⃣ Normaliza texto y elimina puntuación
+        # Normalización y limpieza previa
         texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8").lower()
         texto = texto.translate(str.maketrans('', '', string.punctuation))
-        lista_de_frases = texto.split()
-        # 3️⃣ Filtra por stopwords originales (sin lematizar)
-        palabras_filtradas = [
-            " ".join([p for p in frase.split() if p.lower() not in self.stop_custom_completed])
-            for frase in lista_de_frases
-        ]
+        
+        max_chars = self.nlp.max_length  # Usa el límite actual definido en spaCy
+        tokens = []
 
-        # 4️⃣ Ahora pasa solo esas palabras por spaCy y extrae lemas
-        doc = self.nlp(" ".join(palabras_filtradas))
-        lemas_filtrados = [
-            token.lemma_ for token in doc
-            if token.is_alpha and token.lemma_ not in self.stop_custom_completed
-        ]
-        self.lista_frases = lista_de_frases
-        self.doc = doc
-        self.lemas_filtrados = lemas_filtrados
-        lemas_string = " ".join(lemas_filtrados)
-       # lemas_string_filtrados  = [p for p in lemas_string.split() if p not in self.stop_custom_completed]
+        for i in range(0, len(texto), max_chars):
+            chunk = texto[i:i + max_chars]
+            doc = self.nlp(chunk)
+            tokens.extend([
+                token.lemma_ for token in doc
+                if token.is_alpha and not token.is_stop and len(token.lemma_) > 2
+            ])
+        return tokens
+    
+    def _modelo_lda(self,corpus,diccionario, num_temas = 5):
+        print("⚡ Aplicando modelo LDA...")
+        lda_model = gensim.models.LdaModel(
+            corpus=corpus,
+            id2word=diccionario,
+            num_topics = num_temas,           
+            random_state=42,
+            passes=10, # cuantas veces se pasa por el corpus
+            alpha='auto'
+        )
+        temas = lda_model.get_document_topics(corpus[0])
+        return lda_model, sorted(temas, key=lambda x: -x[1])
+        
 
-        return lemas_string
-
-    def procesar_textos(self):
+    def _procesar_textos(self):
         print("🚀 Procesando textos de los PDFs...")
         textos = []
+        resultados_lda = []
+        textos_limpios = []
         for _, row in self.df.iterrows():
             nombre_pdf = str(row.get('pdf', '')).strip()
             if not nombre_pdf or nombre_pdf.lower() == 'nan':
                 textos.append("")
+                textos_limpios.append([])
+                resultados_lda.append("Sin tema") 
                 continue
             ruta = os.path.join(self.input_dir_pdf, nombre_pdf)
+            # 1 - Extracción de texto
             texto = self._extraer_texto_pdf(ruta)
+            # 2 - Limpieza y tokenización
+            tokens = self._limpiar_y_tokenizar(texto)
+            textos_limpios.append(tokens)
+            # 3 - Entrenar modelo LDA
+            # 3.1 - Preparación del corpus para modelo LDA (Se trata el documento como una "lista de palabras")
+            texts = [tokens]
+            print(f"📦 N° de documentos tokenizados: {len(texts)}")
+        
+            # 3.2 - Crear diccionario y corpus
+            diccionario = corpora.Dictionary(texts)
+            corpus = [diccionario.doc2bow(texto) for texto in texts]
 
-            limpio = self._limpiar_texto(texto)
-            if 'el' in limpio:
-                print('stop')
-            encontrado = re.search(r"\bel\b", limpio)
-            textos.append(limpio)
-        self.textos_limpios = textos
-        self.df["texto_limpio"] = textos
-        print("✅ Textos procesados y añadidos al DataFrame.")
-        return self.df
-
-    def aplicar_tfidf(self):
-        print("⚡ Aplicando TF-IDF...")
-        if not any(self.textos_limpios):
-            print("⚠️ No hay textos limpios para procesar TF-IDF.")
-            self.df["top_tfidf"] = ""
-            return self.df
-
-        vectorizer = TfidfVectorizer(max_features=10)
-        X = vectorizer.fit_transform(self.textos_limpios)
-        feature_names = vectorizer.get_feature_names_out()
-
-        palabras_tfidf = []
-        for row in X.toarray():
-            indices = row.argsort()[::-1]
-            top_palabras = [feature_names[i] for i in indices if row[i] > 0]
-            palabras_tfidf.append(", ".join(top_palabras))
-
-        self.df["top_tfidf"] = palabras_tfidf
-        print("✅ TF-IDF calculado y añadido al DataFrame.")
-        return self.df
-
-    def aplicar_lda(self, num_temas=3):
-        print("⚡ Aplicando LDA...")
-        resultados_lda = []
-        for texto in self.textos_limpios:
-            tokens = texto.split()
-            if not tokens:
+            # 4 - Validación antes de aplicar modelo
+            if not corpus or all(len(doc) == 0 for doc in corpus) or len(diccionario) == 0:
+                print("⚠️ Corpus o diccionario vacío. Se asigna 'Sin tema'.")
                 resultados_lda.append("Sin tema")
                 continue
-            diccionario = corpora.Dictionary([tokens])
-            corpus = [diccionario.doc2bow(tokens)]
-            lda = models.LdaModel(corpus, num_topics=num_temas, id2word=diccionario, passes=10, random_state=42)
-            temas = lda.get_document_topics(corpus[0])
-            temas = sorted(temas, key=lambda x: -x[1])
+
+            # 5 - Aplicación del modelo LDA
+            lda_model, temas = self._modelo_lda(corpus=corpus, diccionario=diccionario)
+
+            # 6 - Descripción de temas
             descripciones = []
             for id_tema, prob in temas:
                 prob = round(prob, 2)
                 if prob <= 0.0:
                     continue
-                palabras = ", ".join([p for p, _ in lda.show_topic(id_tema, topn=5)])
+                palabras = ", ".join([p for p, _ in lda_model.show_topic(id_tema, topn=10)])
                 descripciones.append(f"{palabras} ({prob})")
+
             resultados_lda.append(" | ".join(descripciones) if descripciones else "Sin tema")
+        if len(resultados_lda) != len(self.df):
+             raise ValueError(f"❌ Longitud de resultados_lda ({len(resultados_lda)}) no coincide con el DataFrame ({len(self.df)}).")
         self.df["topicos_lda"] = resultados_lda
+        self.textos_limpios = textos_limpios
         print("✅ LDA completado y añadido al DataFrame.")
         return self.df
-
+            
     def aplicar_clasificacion_manual(self, fallback_columna="descripcion"):
-        print("⚡ Aplicando clasificación manual...")
+        print("⚡ Aplicando clasificación tecnologica/no teconológica (sobre texto de PDF)...")
+
         es_tecnologica = []
         es_no_tecnologica = []
 
         for idx, row in self.df.iterrows():
-            texto = self.textos_limpios[idx] if idx < len(self.textos_limpios) else ""
-            if not texto.strip():
+            # Usa texto limpio si está disponible, sino fallback
+            if idx < len(self.textos_limpios) and self.textos_limpios[idx]:
+                texto = " ".join(self.textos_limpios[idx])  # tokens a string
+            else:
                 texto = str(row.get(fallback_columna, "")).lower()
 
             contiene_tec = any(p in texto for p in self.palabras_tecnologia)
             contiene_no_tec = any(p in texto for p in self.palabras_descartes)
-            es_tecnologica.append(contiene_tec)
+
+            es_tecnologica.append(contiene_tec and not contiene_no_tec)
             es_no_tecnologica.append(contiene_no_tec)
-        es_tecnologica = False if es_no_tecnologica else es_tecnologica
-    
+
         self.df["es_tecnologica"] = es_tecnologica
         self.df["es_no_tecnologica"] = es_no_tecnologica
-        print("✅ Clasificación manual completada y añadida al DataFrame.")
+
+        print("✅ Clasificación tecnologica/no teconológica completada.")
         return self.df
+
 
     def procesar_completo(self):
         """
-        Aplica todo el flujo: extraer + limpiar + TF-IDF + LDA + clasificación manual.
-        Elimina texto_limpio al final.
+        Aplica todo el flujo: extracción de texto, limpieza, LDA y clasificación manual.
+        Elimina la variable temporal 'textos_limpios' al final.
         """
         print("🚀 Iniciando procesamiento completo...")
-        self.procesar_textos()
-        self.aplicar_tfidf()
-        self.aplicar_lda()
+
+        # 1. Procesar textos (extrae, limpia, aplica LDA)
+        self._procesar_textos()
+
+        # 2. Aplicar clasificación tecnológica
         self.aplicar_clasificacion_manual()
-        if "texto_limpio" in self.df.columns:
-            self.df.drop(columns=["texto_limpio"], inplace=True)
-            print("🗑️ Columna 'texto_limpio' eliminada del DataFrame final.")
+
+        # 3. Eliminar variable temporal si se desea no guardar tokens
+        if hasattr(self, "textos_limpios"):
+            del self.textos_limpios
+            print("🗑️ Variable 'textos_limpios' eliminada tras el procesamiento.")
+
         print("✅ Procesamiento completo finalizado.")
         return self.df
-
 
 

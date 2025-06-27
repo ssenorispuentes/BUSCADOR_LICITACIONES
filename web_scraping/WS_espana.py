@@ -2,7 +2,7 @@ import os
 import time
 import configparser
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -13,9 +13,7 @@ from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 import re
 import unicodedata
-import requests
-from urllib.parse import urlparse
-import fitz
+
 class ScraperEspana:
     def __init__(self, fecha, config_file="./config/scraper_config.ini", fecha_minima=None):
         config = configparser.ConfigParser()
@@ -24,8 +22,9 @@ class ScraperEspana:
 
         self.config_file = config_file
         self.OUTPUT_DIR = config.get("input_output_path", "output_dir", fallback="./datos")
+        self.OUTPUT_DIR_PDF = config.get('input_output_path', "output_dir_pdf", fallback="./datos")
         os.makedirs(self.OUTPUT_DIR, exist_ok=True)
-
+        os.makedirs(self.OUTPUT_DIR_PDF, exist_ok=True)
         self.url = config.get("urls", "base_esp")
         if not self.url:
             raise ValueError("❌ La URL de la Plataforma de Contratación del Estado no está definida en el .ini")
@@ -182,11 +181,9 @@ class ScraperEspana:
                         href = enlace_pdf.get_attribute("href")
                         if href:
                             print(f"📥 Descargando PDF desde: {href}")
-                            os.makedirs("./pdfs", exist_ok=True)
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            nombre_pdf = f"pliego_prescripciones_{timestamp}.pdf"
-                            ruta = os.path.join("./pdfs", nombre_pdf)
-
+                            nombre_pdf = f"esp_pliego_prescripciones_{timestamp}.pdf"
+                            ruta = os.path.join(self.OUTPUT_DIR_PDF, nombre_pdf)
                             r = requests.get(href, stream=True)
                             if r.status_code == 200:
                                 with open(ruta, 'wb') as f:
@@ -350,8 +347,6 @@ class ScraperEspana:
             no_nulos = df['pdf_pliego_prescripciones_tecnicas'].notna().sum()
             total = nulos + no_nulos
             print(f"🟡 PDFs descargados con éxito en la página de gobierno de España: {no_nulos}/{total} ")
-            df[['pdf_pliego_prescripciones_tecnicas', 'enlace_a_la_licitacion']].to_csv(
-                '/home/sara/Documentos/TMC_2025/proyectos_internos/licitaciones/BUSCADOR_LICITACIONES/datos_licitaciones_final/chequeo_pdf_licitacion.csv')
             return df
         finally:
             self.driver.quit()

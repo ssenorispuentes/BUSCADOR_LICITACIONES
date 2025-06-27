@@ -167,7 +167,7 @@ class ScraperAndalucia:
                             if "prescripciones tecnicas" in titulo or "prescripciones tecnicas" in texto_link \
                             or "ppt" in titulo or "ppt" in texto_link:
                                 url_pdf = urljoin(url_base, link["href"])
-                                nombre_archivo = 'and_' + url_pdf.split("/")[-1] + ".pdf"
+                                nombre_archivo = 'and_pliego_prescripciones_' + url_pdf.split("/")[-1] + ".pdf"
                                 nombre_guardado = descargar_pdf(url_pdf, nombre_archivo)
                                 if nombre_guardado:
                                     resultado["PDF Prescripciones Técnicas"] = nombre_guardado
@@ -304,6 +304,10 @@ class ScraperAndalucia:
         # Limpieza de nombres de columnas
         nuevas_columnas = [self.limpiar_nombre_columna(col) for col in df.columns]
         df.columns = nuevas_columnas
+        nulos = df['pdf_prescripciones_tecnicas'].isna().sum()
+        # Cantidad de no nulos (con valor)
+        no_nulos = df['pdf_prescripciones_tecnicas'].notna().sum()
+        print(f"🟡 PDFs descargados con éxito en la página de Andalucía: {no_nulos}/{nulos + no_nulos} ")
         filename = f"licitaciones_andalucia_{self.fecha}.csv" 
         path = os.path.join(self.OUTPUT_DIR, filename)
         df.to_csv(path, index=False, sep="\t", encoding="utf-8-sig")
@@ -317,8 +321,8 @@ class ScraperAndalucia:
         try:
             datos = self.scraping()
             self.guardar(datos)
-            return pd.DataFrame(datos)
-        except Exception as e:
-            print(f"❌ Error durante la ejecución: {e}")
+            # Cantidad de NaNs (vacíos)
+            df_datos = pd.DataFrame(datos)
+            return df_datos
         finally:
             self.driver.quit()

@@ -37,17 +37,17 @@ def main(fecha_proceso = None, usar_scraping = True):
 
         df_and = df_esp = df_eus = df_mad = None
         # Ejecutar scrapers
-        # print("🟢 Ejecutando scraper Andalucía...")
-        # df_and = ScraperAndalucia(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
+        print("🟢 Ejecutando scraper Andalucía...")
+        df_and = ScraperAndalucia(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
 
         print("🟢 Ejecutando scraper Estado...")
         df_esp = ScraperEspana(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
 
-        # print("🟢 Ejecutando scraper Euskadi...")
-        # df_eus = ScraperEuskadi(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
-        #
-        # print("🟢 Ejecutando scraper Madrid...")
-        # df_mad = ScraperMadrid(fecha = fecha_ejecucion, config_file = config_path, fecha_minima = fecha_minima).ejecutar()
+        print("🟢 Ejecutando scraper Euskadi...")
+        df_eus = ScraperEuskadi(fecha = fecha_ejecucion, config_file = config_path).ejecutar()
+        
+        print("🟢 Ejecutando scraper Madrid...")
+        df_mad = ScraperMadrid(fecha = fecha_ejecucion, config_file = config_path, fecha_minima = fecha_minima).ejecutar()
     else:
         print(f"🟢 Leyendo ficheros de licitaciones...")
         # 🟠 Leer datos desde CSVs en carpeta de datos

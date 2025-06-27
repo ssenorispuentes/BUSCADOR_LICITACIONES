@@ -167,7 +167,13 @@ def main():
                     valores = st.sidebar.slider(f"{col}", min_value=min_val, max_value=max_val, value=(min_val, max_val))
                     df_no_favoritos = df_no_favoritos[(df_no_favoritos[col] >= valores[0]) & (df_no_favoritos[col] <= valores[1])]
             elif col == "Fecha Límite Presentación":
-                fecha_max = pd.to_datetime(df_no_favoritos[col], errors="coerce").dropna().max()
+                fechas_col = pd.to_datetime(df_no_favoritos[col], errors="coerce").dropna()
+                if fechas_col.empty:
+                    fecha_max = datetime.today().date()
+                    st.warning(f"⚠️ No hay fechas válidas en '{col}'. Se usa la fecha actual como valor por defecto.")
+                else:
+                    fecha_max = fechas_col.max().date()
+
                 fecha_seleccionada = st.sidebar.date_input(f"{col}", value=fecha_max, key=f"filtro_{col}")
                 df_no_favoritos[col] = pd.to_datetime(df_no_favoritos[col], errors="coerce")
                 df_no_favoritos = df_no_favoritos[df_no_favoritos[col].dt.date <= fecha_seleccionada]
