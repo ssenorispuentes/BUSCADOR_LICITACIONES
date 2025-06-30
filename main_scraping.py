@@ -20,6 +20,7 @@ def main(fecha_proceso = None, usar_scraping = True):
     columns_ini.read(columns_path)
 
     output_dir = config.get("input_output_path", "output_dir_final", fallback="./output_final")
+    dias_fecha_min = int(config.get("all_params", "dias_fecha_min"))
     os.makedirs(output_dir, exist_ok=True)
 
     # Extraer columnas finales y por comunidad
@@ -30,11 +31,8 @@ def main(fecha_proceso = None, usar_scraping = True):
     columns_mad = functions.get_columns_dict(columns_ini["mad_columns_order"])
     hoy = datetime.today()
     fecha_ejecucion = fecha_proceso if fecha_proceso else hoy.date()
-    usar_scraping = True
     if usar_scraping:
-        
-        fecha_minima = hoy + timedelta(days=15)
-
+        fecha_minima = hoy + timedelta(days=dias_fecha_min)
         df_and = df_esp = df_eus = df_mad = None
         # Ejecutar scrapers
         print("🟢 Ejecutando scraper Andalucía...")
@@ -141,6 +139,7 @@ def main(fecha_proceso = None, usar_scraping = True):
     print("🟢 Clasificación de texto...")
     processor = lda_processor.LicitacionTextProcessor(df_unificado, config_file="./config/scraper_config.ini")
     df_final = processor.procesar_completo()
+
     # Guardar
     output_file = os.path.join(output_dir, f"licitaciones.csv")
     df_final = df_final.dropna(subset=['titulo'])
