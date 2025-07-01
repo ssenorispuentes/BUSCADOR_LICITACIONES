@@ -144,6 +144,8 @@ def main(fecha_proceso = None, usar_scraping = True):
     output_file = os.path.join(output_dir, f"licitaciones.csv")
     df_final = df_final.dropna(subset=['titulo'])
     df_final[df_final.select_dtypes(include=['object']).columns] = df_final.select_dtypes(include=['object']).fillna('NotFound')
+    df_final[df_final.select_dtypes(include=['float','int']).columns] = df_final.select_dtypes(include=['float','int']).fillna(-1)
+
     df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
     df_final.to_csv(output_file, index=False,sep="\t", encoding="utf-8-sig")
     print(f"✅ Archivo final de licitaciones guardado en: {output_file}")

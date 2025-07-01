@@ -47,7 +47,6 @@ def cargar_datos(output_dir):
         return None, csv_path
     df = pd.read_csv(csv_path, sep="\t", encoding="utf-8-sig")
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-
     return df, csv_path
 
 # -------------------------------
@@ -75,9 +74,6 @@ def main():
 
     if df is not None and not df.empty:
         df = df.rename(columns=rename_dict)
-        print('----------------------------------------------------------------')
-        print(df.columns)
-        print('----------------------------------------------------------------')
         if 'Fecha Ejecución Proceso' in df.columns:
             fechas_proceso = pd.to_datetime(df['Fecha Ejecución Proceso'], errors='coerce').dropna()
             if not fechas_proceso.empty:
@@ -149,7 +145,7 @@ def main():
                 mask |= col_sin_acentos.str.contains(palabra, na=False)
         df_no_favoritos = df_no_favoritos[mask]
         df_no_favoritos["CoincidePalabra"] = True
-        # st.info(f"🔍 Se encontraron {len(df_no_favoritos)} licitaciones que contienen al menos una de las palabras clave.")
+        print(len(df_no_favoritos))
 
     # Filtros dinámicos
     with st.sidebar.expander("🎛️ Filtros dinámicos y columnas"):
@@ -158,21 +154,25 @@ def main():
             cols_filtrar = cargar_columns_ini()[1]
         except:
             cols_filtrar = df_base.columns
-
+        print(len(df_no_favoritos))
         for col in cols_filtrar:
             if col not in df_no_favoritos.columns:
                 continue
-            if pd.api.types.is_bool_dtype(df_no_favoritos[col]):
-                seleccionadas = st.sidebar.multiselect(f"{col}", options=[True, False], key=f"filtro_{col}")
+
+            if pd.api.types.is_bool_dtype(df_base[col]):
+                opciones = [True, False]
+                seleccionadas = st.sidebar.multiselect(f"{col}", options=opciones, key=f"filtro_{col}")
                 if seleccionadas and len(seleccionadas) < 2:
                     df_no_favoritos = df_no_favoritos[df_no_favoritos[col].isin(seleccionadas)]
-            elif pd.api.types.is_numeric_dtype(df_no_favoritos[col]):
+
+            elif pd.api.types.is_numeric_dtype(df_base[col]):
                 col_data = df_no_favoritos[col].dropna()
                 if not col_data.empty and col_data.min() != col_data.max():
                     min_val = float(col_data.min())
                     max_val = float(col_data.max())
                     valores = st.sidebar.slider(f"{col}", min_value=min_val, max_value=max_val, value=(min_val, max_val))
-                    df_no_favoritos = df_no_favoritos[(df_no_favoritos[col] >= valores[0]) & (df_no_favoritos[col] <= valores[1])]
+                    df_no_favoritos = df_no_favoritos[((df_no_favoritos[col] >= valores[0]) & (df_no_favoritos[col] <= valores[1]))]
+
             elif col == "Fecha Límite Presentación":
                 fechas_col = pd.to_datetime(df_no_favoritos[col], errors="coerce").dropna()
                 if fechas_col.empty:
