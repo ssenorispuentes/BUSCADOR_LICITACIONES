@@ -46,7 +46,6 @@ def cargar_datos(output_dir):
     if not os.path.exists(csv_path):
         return None, csv_path
     df = pd.read_csv(csv_path, sep="\t", encoding="utf-8-sig")
-    #df = pd.read_csv(csv_path, sep=",",on_bad_lines='skip')
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
     return df, csv_path

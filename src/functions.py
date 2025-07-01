@@ -144,6 +144,10 @@ def filtrar_renombrar_dataframe(df, comunidad, columnas_finales, columnas_inicia
     
     # Ordenar según columnas_finales
     final_order = list(columnas_finales.keys())
+    # Depuración opcional
+    if df_filtrado.columns.duplicated().any():
+        print("⚠️ Hay columnas duplicadas antes del reindex:", df_filtrado.columns[df_filtrado.columns.duplicated()])
+        df_filtrado = df_filtrado.loc[:, ~df_filtrado.columns.duplicated()]
     df_final = df_filtrado.reindex(columns=final_order)
      # Formatear columna fecha fin presentacion
     # Intentar convertir formatos conocidos
@@ -153,10 +157,9 @@ def filtrar_renombrar_dataframe(df, comunidad, columnas_finales, columnas_inicia
     for col in df_final.columns:
         if any(kw in col.lower() for kw in ['importe', 'valor', 'presupuesto']):
             df_final[col] = df_final[col].apply(limpiar_importe)
-
     # Añadir columnas extra
     df_final["fuente"] = map_comunidad.get(comunidad,'')
-    df_final["fecha_proceso"] = fecha_proceso    
+    df_final["fecha_proceso"] = fecha_proceso   
     return df_final
 
 def normalizar_texto(texto):

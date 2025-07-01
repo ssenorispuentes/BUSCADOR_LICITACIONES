@@ -107,7 +107,7 @@ class ScraperEspana:
         try:
             # 👉 Abrir nueva pestaña con el enlace de detalle
             self.driver.execute_script("window.open(arguments[0]);", enlace)
-            self.driver.switch_to.window(self.driver.window_handles[1])
+            self.driver.switch_to.window(self.driver.window_handles[-1])  # ✅ más seguro que [1]
             time.sleep(3)
             print(f"➡️ Detalle abierto correctamente: {enlace}")
 
@@ -124,9 +124,8 @@ class ScraperEspana:
                         try:
                             fecha_limite = pd.to_datetime(valor, dayfirst=True)
                             if fecha_limite < self.fecha_minima:
-                                self.driver.close()
-                                self.driver.switch_to.window(self.driver.window_handles[0])
-                                return None
+                                print("🛑 Fecha fuera del rango permitido")
+                                raise Exception("Fecha fuera de rango")
                         except Exception as e:
                             print(f"⚠️ Error parseando fecha: {e}")
                     detalle[clave] = valor
@@ -140,7 +139,6 @@ class ScraperEspana:
                 tabla = wait.until(EC.presence_of_element_located((By.ID, "myTablaDetalleVISUOE")))
                 filas = tabla.find_elements(By.XPATH, ".//tr[contains(@class, 'rowClass')]")
                 print(f"📊 Filas en tabla de documentos: {len(filas)}")
-
                 for idx, fila in enumerate(filas):
                     texto = fila.text.lower()
                     print(f"🧾 Fila {idx}: {texto}")
@@ -148,46 +146,39 @@ class ScraperEspana:
                         fila_pliego = fila
                         break
             except Exception as e:
-                print(f"❌ Error localizando la tabla de documentos")
+                print(f"❌ Error localizando la tabla de documentos: {e}")
 
             if fila_pliego:
-                # Aquí se procesa la descarga del PDF de la primera tabla
-                print("Encontrado PDF en la primera tabla, descargando...")
-                enlace_pdf = fila_pliego.find_element(By.TAG_NAME, "a")
-                href = enlace_pdf.get_attribute("href")
-                if href:
-                    # Descargar PDF utilizando el código original
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    nombre_pdf = f"esp_pliego_prescripciones_{timestamp}.pdf"
-                    ruta = os.path.join(self.OUTPUT_DIR_PDF, nombre_pdf)
-                    r = requests.get(href, stream=True)
-                    if r.status_code == 200:
-                        with open(ruta, 'wb') as f:
-                            for chunk in r.iter_content(1024):
-                                f.write(chunk)
-                        print(f"✅ PDF guardado en: {ruta}")
-                        detalle["PDF Pliego Prescripciones Técnicas"] = nombre_pdf
-                    else:
-                        print(f"❌ Error HTTP al descargar PDF: {r.status_code}")
-                else:
-                    print("❌ Enlace al PDF no tiene href")
-            else:
-                print("❌ No se encontró fila con 'pliego' en la primera tabla, buscando en la segunda tabla...")
-
-                # 👉 Buscar el enlace PDF en la segunda tabla (si la primera no lo tiene)
+                print("📥 Encontrado PDF en la primera tabla, descargando...")
                 try:
-                    # Esperar hasta que el enlace esté disponible en la segunda tabla
-                    WebDriverWait(self.driver, 20).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "a.TextAlignCenter.celdaTam2")))
+                    enlace_pdf = fila_pliego.find_element(By.TAG_NAME, "a")
+                    href = enlace_pdf.get_attribute("href")
+                    if href:
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        nombre_pdf = f"esp_pliego_prescripciones_{timestamp}.pdf"
+                        ruta = os.path.join(self.OUTPUT_DIR_PDF, nombre_pdf)
+                        r = requests.get(href, stream=True)
+                        if r.status_code == 200:
+                            with open(ruta, 'wb') as f:
+                                for chunk in r.iter_content(1024):
+                                    f.write(chunk)
+                            print(f"✅ PDF guardado en: {ruta}")
+                            detalle["PDF Pliego Prescripciones Técnicas"] = nombre_pdf
+                        else:
+                            print(f"❌ Error HTTP al descargar PDF: {r.status_code}")
+                    else:
+                        print("❌ Enlace al PDF no tiene href")
+                except Exception as e:
+                    print(f"⚠️ Error al descargar PDF de la primera tabla: {e}")
+            else:
+                print("❌ No se encontró fila con 'pliego' en la primera tabla, buscando en la segunda...")
 
-                    # Buscar el enlace del PDF
+                try:
+                    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.TextAlignCenter.celdaTam2")))
                     enlace_pdf = self.driver.find_element(By.CSS_SELECTOR, "a.TextAlignCenter.celdaTam2")
-
-                    # Obtener el atributo href (enlace de descarga)
                     pdf_url = enlace_pdf.get_attribute("href")
                     if pdf_url:
-                        print(f"Found PDF link: {pdf_url}")
-                        # Descargar el PDF
+                        print(f"📥 Encontrado PDF en la segunda tabla: {pdf_url}")
                         response = requests.get(pdf_url)
                         if response.status_code == 200:
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -195,28 +186,36 @@ class ScraperEspana:
                             ruta = os.path.join(self.OUTPUT_DIR_PDF, nombre_pdf)
                             with open(ruta, 'wb') as f:
                                 f.write(response.content)
-                            print(f"✅ PDF downloaded to {ruta}")
+                            print(f"✅ PDF descargado: {ruta}")
                             detalle["PDF Pliego Prescripciones Técnicas"] = nombre_pdf
                         else:
-                            print(f"❌ Failed to download PDF. HTTP Status: {response.status_code}")
+                            print(f"❌ Error HTTP al descargar PDF: {response.status_code}")
                     else:
-                        print("❌ No valid PDF link found in the second table.")
+                        print("❌ No se encontró href válido en segunda tabla")
                 except Exception as e:
                     print(f"❌ Error en la segunda tabla: {e}")
 
-            # 👉 Cerrar pestaña de detalle y volver
-            self.driver.close()
-            self.driver.switch_to.window(self.driver.window_handles[0])
+            # ✅ Cierre seguro de pestaña
+            try:
+                if len(self.driver.window_handles) > 1:
+                    self.driver.close()
+                    self.driver.switch_to.window(self.driver.window_handles[0])
+            except Exception as e:
+                print(f"⚠️ Error al cerrar pestaña o volver: {e}")
 
         except Exception as e:
             print(f"❌ Error general en extracción de detalle: {e}")
+            # ✅ Último intento de recuperar la sesión base
             try:
-                self.driver.close()
-                self.driver.switch_to.window(self.driver.window_handles[0])
-            except:
-                pass
+                if len(self.driver.window_handles) > 1:
+                    self.driver.close()
+                    self.driver.switch_to.window(self.driver.window_handles[0])
+            except Exception as e2:
+                print(f"⚠️ Error al intentar cerrar o volver tras fallo: {e2}")
 
         return detalle
+
+
 
 
     def extraer_pagina(self):
