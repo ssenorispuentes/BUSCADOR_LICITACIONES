@@ -155,6 +155,22 @@ def main():
         except:
             cols_filtrar = df_base.columns
         print(len(df_no_favoritos))
+        # Filtro específico Clasificación en el sidebar
+        if "clasificacion" in df_no_favoritos.columns:
+            opciones_clasificacion = sorted(
+                df_no_favoritos["clasificacion"].fillna("No clasificado").unique().tolist()
+            )
+            seleccionadas_clasificacion = st.sidebar.multiselect(
+                "Clasificación",
+                options=opciones_clasificacion,
+                default=opciones_clasificacion,
+                key="filtro_clasificacion"
+            )
+            if seleccionadas_clasificacion:
+                df_no_favoritos = df_no_favoritos[
+                    df_no_favoritos["clasificacion"].isin(seleccionadas_clasificacion)
+                ]
+
         for col in cols_filtrar:
             if col not in df_no_favoritos.columns:
                 continue

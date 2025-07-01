@@ -5,13 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bc247871-cf9b-42e9-a003-d6b063eea6d5" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/web_scraping/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/csv-editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/csv-editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/datos_licitaciones_final/.~lock.licitaciones.csv#" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/scraper_columns.ini" beforeDir="false" afterPath="$PROJECT_DIR$/config/scraper_columns.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/scraper_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/config/scraper_config.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main_scraping.py" beforeDir="false" afterPath="$PROJECT_DIR$/main_scraping.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web_scraping/WS_espana.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_scraping/WS_espana.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lda_processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/lda_processor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web_scraping/WS_andalucia.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_scraping/WS_andalucia.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -45,21 +46,21 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.lda_processor.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.main_scraping.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;com.codeium.enabled&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;scraping__es&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/sara/Documentos/TMC_2025/proyectos_internos/licitaciones/BUSCADOR_LICITACIONES&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.app.executor": "Run",
+    "Python.lda_processor.executor": "Debug",
+    "Python.main_scraping.executor": "Run",
+    "Python.test.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "com.codeium.enabled": "true",
+    "git-widget-placeholder": "drop__errores__ejec",
+    "last_opened_file_path": "/home/sara/Documentos/TMC_2025/proyectos_internos/licitaciones/BUSCADOR_LICITACIONES",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="Python.main_scraping">
     <configuration name="app" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="BUSCADOR_LICITACIONES" />
@@ -237,19 +238,29 @@
           <option name="timeStamp" value="55" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/web_scraping/WS_espana.py</url>
-          <line>24</line>
-          <option name="timeStamp" value="57" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/app.py</url>
-          <line>156</line>
+          <line>152</line>
           <option name="timeStamp" value="60" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/main_scraping.py</url>
-          <line>9</line>
-          <option name="timeStamp" value="61" />
+          <line>148</line>
+          <option name="timeStamp" value="63" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/web_scraping/WS_andalucia.py</url>
+          <line>325</line>
+          <option name="timeStamp" value="65" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/functions.py</url>
+          <line>142</line>
+          <option name="timeStamp" value="66" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/functions.py</url>
+          <line>160</line>
+          <option name="timeStamp" value="67" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

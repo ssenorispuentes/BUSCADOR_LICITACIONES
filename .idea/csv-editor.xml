@@ -24,6 +24,20 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/datos_licitaciones/licitaciones_madrid_2025-07-01.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="&#9;" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/datos_licitaciones/licitaciones_madrid_scraping.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="&#9;" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/datos_licitaciones_final/licitaciones.csv">
           <value>
             <Attribute>

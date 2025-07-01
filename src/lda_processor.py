@@ -143,12 +143,11 @@ class LicitacionTextProcessor:
         self.textos_limpios = textos_limpios
         print("✅ LDA completado y añadido al DataFrame.")
         return self.df
-            
-    def aplicar_clasificacion_manual(self, fallback_columna="descripcion"):
-        print("⚡ Aplicando clasificación tecnologica/no teconológica (sobre texto de PDF)...")
 
-        es_tecnologica = []
-        es_no_tecnologica = []
+    def aplicar_clasificacion_manual(self, fallback_columna="descripcion"):
+        print("⚡ Aplicando clasificación tecnológica/no tecnológica (sobre texto de PDF)...")
+
+        clasificaciones = []
 
         for idx, row in self.df.iterrows():
             # Usa texto limpio si está disponible, sino fallback
@@ -160,15 +159,17 @@ class LicitacionTextProcessor:
             contiene_tec = any(p in texto for p in self.palabras_tecnologia)
             contiene_no_tec = any(p in texto for p in self.palabras_descartes)
 
-            es_tecnologica.append(contiene_tec and not contiene_no_tec)
-            es_no_tecnologica.append(contiene_no_tec)
+            if contiene_tec and not contiene_no_tec:
+                clasificaciones.append("Tecnológica")
+            elif contiene_no_tec:
+                clasificaciones.append("No tecnológica")
+            else:
+                clasificaciones.append("N/S")
 
-        self.df["es_tecnologica"] = es_tecnologica
-        self.df["es_no_tecnologica"] = es_no_tecnologica
+        self.df["clasificacion"] = clasificaciones
 
-        print("✅ Clasificación tecnologica/no teconológica completada.")
+        print("✅ Clasificación completada.")
         return self.df
-
 
     def procesar_completo(self):
         """

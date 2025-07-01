@@ -31,6 +31,8 @@ def main(fecha_proceso = None, usar_scraping = True):
     columns_mad = functions.get_columns_dict(columns_ini["mad_columns_order"])
     hoy = datetime.today()
     fecha_ejecucion = fecha_proceso if fecha_proceso else hoy.date()
+    print(f'fecha ejecucion {fecha_ejecucion}')
+    usar_scraping = True
     if usar_scraping:
         fecha_minima = hoy + timedelta(days=dias_fecha_min)
         df_and = df_esp = df_eus = df_mad = None
@@ -66,6 +68,7 @@ def main(fecha_proceso = None, usar_scraping = True):
                                                          comunidad = 'andalucia',
                                                          sep = '\t',
                                                          fecha_proceso = fecha_proceso)
+
         except Exception as e:
             print(f"⚠️ Error cargando Andalucía: {e}")
 
@@ -95,7 +98,6 @@ def main(fecha_proceso = None, usar_scraping = True):
                                                 fecha_proceso = fecha_proceso)
         except Exception as e:
             print(f"⚠️ Error cargando Madrid: {e}")
-
 
     # Filtrar, renombrar y añadir info
     df_and_final = df_esp_final = df_eus_final = df_mad_final = None
@@ -128,6 +130,9 @@ def main(fecha_proceso = None, usar_scraping = True):
 
     if dfs_a_unir:
         print("🔹 Unificando información...")
+        print(f'uniendo {len(dfs_a_unir)} dataframes...')
+        for df_ in dfs_a_unir:
+            print(f'shape dataset {df_.shape}')
         df_unificado = pd.concat(dfs_a_unir, ignore_index=True)
         # df_unificado = functions.combinar_duplicados_por_expediente(df_unificado, col_exp = 'numero_expediente')
         print(f"✅ Unificación completada. Total registros: {df_unificado.shape[0]}")
@@ -139,16 +144,21 @@ def main(fecha_proceso = None, usar_scraping = True):
     print("🟢 Clasificación de texto...")
     processor = lda_processor.LicitacionTextProcessor(df_unificado, config_file="./config/scraper_config.ini")
     df_final = processor.procesar_completo()
+    print(f'df final linea 147 {df_final.shape}')
 
     # Guardar
+    print("Conteo de NaN en columna 'titulo' por comunidad:")
+    print(df_unificado.fuente.unique())
     output_file = os.path.join(output_dir, f"licitaciones.csv")
     df_final = df_final.dropna(subset=['titulo'])
     df_final[df_final.select_dtypes(include=['object']).columns] = df_final.select_dtypes(include=['object']).fillna('NotFound')
     df_final[df_final.select_dtypes(include=['float','int']).columns] = df_final.select_dtypes(include=['float','int']).fillna(-1)
 
     df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
+    print(f'df final linea 156 {df_final.shape}')
     df_final.to_csv(output_file, index=False,sep="\t", encoding="utf-8-sig")
     print(f"✅ Archivo final de licitaciones guardado en: {output_file}")
+
 
 import argparse
 if __name__ == "__main__":
@@ -167,7 +177,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(fecha_proceso=args.fecha_proceso, usar_scraping=args.usar_scraping)
+    main(fecha_proceso=args.fecha_proceso,
+         usar_scraping=args.usar_scraping)
 
 #python main_scraping.py                  No hace scraping, lee ficheros con fecha más actualizada
 #python main_scraping.py 2024-06-01       No hace scraping, lee ficheros con fecha la que se le pasa

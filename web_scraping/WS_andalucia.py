@@ -291,6 +291,7 @@ class ScraperAndalucia:
         nombre = re.sub(r'^[^\w]+|[^\w]+$|^_+|_+$', '', nombre)
         nombre = re.sub(r'[^\w]+$', '', nombre)  # limpia cualquier no alfanumérico al final
         return nombre
+
     def guardar(self, datos):
         """
         Guarda los datos extraídos en un archivo CSV en el directorio de salida.
@@ -313,6 +314,7 @@ class ScraperAndalucia:
         path = os.path.join(self.OUTPUT_DIR, filename)
         df.to_csv(path, index=False, sep="\t", encoding="utf-8-sig")
         print(f"✅ Archivo guardado: {path}")
+        self.df_final = df.copy()
 
     def ejecutar(self):
         """
@@ -322,8 +324,6 @@ class ScraperAndalucia:
         try:
             datos = self.scraping()
             self.guardar(datos)
-            # Cantidad de NaNs (vacíos)
-            df_datos = pd.DataFrame(datos)
-            return df_datos
+            return self.df_final
         finally:
             self.driver.quit()
