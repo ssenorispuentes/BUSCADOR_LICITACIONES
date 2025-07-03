@@ -4,16 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bc247871-cf9b-42e9-a003-d6b063eea6d5" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/csv-editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/csv-editor.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/scraper_columns.ini" beforeDir="false" afterPath="$PROJECT_DIR$/config/scraper_columns.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/scraper_config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/config/scraper_config.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main_scraping.py" beforeDir="false" afterPath="$PROJECT_DIR$/main_scraping.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lda_processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/lda_processor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web_scraping/WS_andalucia.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_scraping/WS_andalucia.py" afterDir="false" />
-    </list>
+    <list default="true" id="bc247871-cf9b-42e9-a003-d6b063eea6d5" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -204,16 +195,6 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>167</line>
-          <option name="timeStamp" value="35" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
-          <line>146</line>
-          <option name="timeStamp" value="36" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/lda_processor.py</url>
           <line>124</line>
           <option name="timeStamp" value="50" />
         </line-breakpoint>
@@ -244,7 +225,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/main_scraping.py</url>
-          <line>148</line>
+          <line>135</line>
           <option name="timeStamp" value="63" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

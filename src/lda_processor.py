@@ -148,6 +148,7 @@ class LicitacionTextProcessor:
         print("⚡ Aplicando clasificación tecnológica/no tecnológica (sobre texto de PDF)...")
 
         clasificaciones = []
+        palabras = list()
 
         for idx, row in self.df.iterrows():
             # Usa texto limpio si está disponible, sino fallback
@@ -161,12 +162,21 @@ class LicitacionTextProcessor:
 
             if contiene_tec and not contiene_no_tec:
                 clasificaciones.append("Tecnológica")
+                palabras_encontradas = [p for p in self.palabras_tecnologia if p in texto]
+                resultado = " ".join(palabras_encontradas)
+                palabras.append(resultado)
             elif contiene_no_tec:
                 clasificaciones.append("No tecnológica")
+                palabras_encontradas = [p for p in self.palabras_descartes if p in texto]
+                resultado = " ".join(palabras_encontradas)
+                palabras.append(resultado)
             else:
                 clasificaciones.append("N/S")
+                palabras.append('n/s')
 
         self.df["clasificacion"] = clasificaciones
+        self.df['palabras'] = palabras
+        self.df[['descripcion', 'pdf', 'topicos_lda', 'clasificacion','palabras']].to_csv('/home/sara/Documentos/TMC_2025/PROYECTOS_INTERNOS/licitaciones/BUSCADOR_LICITACIONES/datos_licitaciones_final/chequeo3.csv')
 
         print("✅ Clasificación completada.")
         return self.df
