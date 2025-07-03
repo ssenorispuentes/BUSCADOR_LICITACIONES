@@ -32,7 +32,7 @@ def main(fecha_proceso = None, usar_scraping = True):
     hoy = datetime.today()
     fecha_ejecucion = fecha_proceso if fecha_proceso else hoy.date()
     print(f'fecha ejecucion {fecha_ejecucion}')
-    usar_scraping = True
+
     if usar_scraping:
         fecha_minima = hoy + timedelta(days=dias_fecha_min)
         df_and = df_esp = df_eus = df_mad = None
