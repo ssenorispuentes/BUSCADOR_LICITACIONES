@@ -145,7 +145,6 @@ def main():
                 mask |= col_sin_acentos.str.contains(palabra, na=False)
         df_no_favoritos = df_no_favoritos[mask]
         df_no_favoritos["CoincidePalabra"] = True
-        print(len(df_no_favoritos))
 
     # Filtros dinámicos
     with st.sidebar.expander("🎛️ Filtros dinámicos y columnas"):
@@ -154,7 +153,7 @@ def main():
             cols_filtrar = cargar_columns_ini()[1]
         except:
             cols_filtrar = df_base.columns
-        print(len(df_no_favoritos))
+
         # Filtro específico Clasificación en el sidebar
         if "clasificacion" in df_no_favoritos.columns:
             opciones_clasificacion = sorted(
@@ -163,7 +162,6 @@ def main():
             seleccionadas_clasificacion = st.sidebar.multiselect(
                 "Clasificación",
                 options=opciones_clasificacion,
-                default=opciones_clasificacion,
                 key="filtro_clasificacion"
             )
             if seleccionadas_clasificacion:
