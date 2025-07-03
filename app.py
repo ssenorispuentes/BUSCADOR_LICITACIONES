@@ -1,4 +1,6 @@
 import os
+os.environ["STREAMLIT_WATCH_USE_POLLING"] = "true"
+import os
 import configparser
 import pandas as pd
 import streamlit as st
@@ -206,8 +208,8 @@ def main():
 
     if "CoincidePalabra" not in df_favoritos.columns:
         df_favoritos["CoincidePalabra"] = False
-
-    df_filtrado_actual = pd.concat([df_favoritos, df_no_favoritos], ignore_index=True).drop_duplicates()
+        
+    df_filtrado_actual = pd.concat([df_favoritos.dropna(how='all', axis=1), df_no_favoritos.dropna(how='all', axis=1)], ignore_index=True).drop_duplicates()
 
     def resaltar_filas(row):
         if row.get("Favorito", False):

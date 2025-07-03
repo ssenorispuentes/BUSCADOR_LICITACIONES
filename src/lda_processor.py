@@ -7,6 +7,7 @@ from gensim import corpora
 import configparser
 from nltk.corpus import stopwords
 import os
+import re
 
 
 class LicitacionTextProcessor:
@@ -57,26 +58,37 @@ class LicitacionTextProcessor:
             print(f"⚠️ Error leyendo {ruta}: {e}")
             return ""
         
-    #  Limpiar y lematizar texto
+
+
     def _limpiar_y_tokenizar(self, texto):
         print("🧹 Limpiando y tokenizando texto...")
 
-        # Normalización y limpieza previa
+        # 1. Normalización básica
         texto = unicodedata.normalize("NFD", texto).encode("ascii", "ignore").decode("utf-8").lower()
         texto = texto.translate(str.maketrans('', '', string.punctuation))
-        
-        max_chars = self.nlp.max_length  # Usa el límite actual definido en spaCy
+
+        # 2. Filtro previo de palabras que están en tu lista de stopwords personalizadas
+        palabras = texto.split()
+        palabras_filtradas = [p for p in palabras if p not in self.stop_custom_completed]
+        texto_filtrado = " ".join(palabras_filtradas)
+
+        # 3. Procesar con spaCy en chunks si el texto es muy largo
+        max_chars = self.nlp.max_length
         tokens = []
 
-        for i in range(0, len(texto), max_chars):
-            chunk = texto[i:i + max_chars]
+        for i in range(0, len(texto_filtrado), max_chars):
+            chunk = texto_filtrado[i:i + max_chars]
             doc = self.nlp(chunk)
+
             tokens.extend([
                 token.lemma_ for token in doc
-                if token.is_alpha and not token.is_stop and len(token.lemma_) > 2
+                if token.is_alpha
+                and len(token.lemma_) > 2
+                and token.lemma_ not in self.stop_custom_completed  # filtro posterior
             ])
+
         return tokens
-    
+
     def _modelo_lda(self,corpus,diccionario, num_temas = 5):
         print("⚡ Aplicando modelo LDA...")
         lda_model = gensim.models.LdaModel(
@@ -145,10 +157,16 @@ class LicitacionTextProcessor:
         return self.df
 
     def aplicar_clasificacion_manual(self, fallback_columna="descripcion"):
+        def contiene_termino(palabra_clave, texto):
+            # Reemplaza _ por espacio y busca como palabra completa
+            patron = rf"\b{re.escape(palabra_clave.replace('_', ' '))}\b"
+            return re.search(patron, texto)
+        
         print("⚡ Aplicando clasificación tecnológica/no tecnológica (sobre texto de PDF)...")
 
         clasificaciones = []
-        palabras = list()
+        claves_tecnologicas_detectadas  = []
+        claves_descartadas_detectadas = []
 
         for idx, row in self.df.iterrows():
             # Usa texto limpio si está disponible, sino fallback
@@ -156,27 +174,27 @@ class LicitacionTextProcessor:
                 texto = " ".join(self.textos_limpios[idx])  # tokens a string
             else:
                 texto = str(row.get(fallback_columna, "")).lower()
+            
+            # Detecta palabras encontradas en cada grupo
+            detectadas_tec = [p for p in self.palabras_tecnologia if contiene_termino(p, texto)]
+            detectadas_no_tec = [p for p in self.palabras_descartes if contiene_termino(p, texto)]
 
-            contiene_tec = any(p in texto for p in self.palabras_tecnologia)
-            contiene_no_tec = any(p in texto for p in self.palabras_descartes)
-
-            if contiene_tec and not contiene_no_tec:
-                clasificaciones.append("Tecnológica")
-                palabras_encontradas = [p for p in self.palabras_tecnologia if p in texto]
-                resultado = " ".join(palabras_encontradas)
-                palabras.append(resultado)
-            elif contiene_no_tec:
-                clasificaciones.append("No tecnológica")
-                palabras_encontradas = [p for p in self.palabras_descartes if p in texto]
-                resultado = " ".join(palabras_encontradas)
-                palabras.append(resultado)
+            # Clasificación
+            if detectadas_tec:
+                clasificacion = "Tecnológica"
+            elif detectadas_no_tec:
+                clasificacion = "No tecnológica"
             else:
-                clasificaciones.append("N/S")
-                palabras.append('n/s')
+                clasificacion = "N/S"
 
+            clasificaciones.append(clasificacion)
+            claves_tecnologicas_detectadas.append(", ".join(detectadas_tec))
+            claves_descartadas_detectadas.append(", ".join(detectadas_no_tec))
+
+        # Guardar en el DataFrame
         self.df["clasificacion"] = clasificaciones
-        self.df['palabras'] = palabras
-        self.df[['descripcion', 'pdf', 'topicos_lda', 'clasificacion','palabras']].to_csv('/home/sara/Documentos/TMC_2025/PROYECTOS_INTERNOS/licitaciones/BUSCADOR_LICITACIONES/datos_licitaciones_final/chequeo3.csv')
+        self.df["palabras_tecnologicas_detectadas"] = claves_tecnologicas_detectadas
+        self.df["palabras_descartadas_detectadas"] = claves_descartadas_detectadas
 
         print("✅ Clasificación completada.")
         return self.df
