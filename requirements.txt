@@ -9,3 +9,8 @@ PyMuPDF
 PyPDF2
 python-docx
 pymongo
+beautifulsoup4
+webdriver-manager
+requests
+lxml
+configparser
