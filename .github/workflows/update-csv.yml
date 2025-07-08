@@ -30,6 +30,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
+        pip install beautifulsoup4
         python -m spacy download es_core_news_sm
         python -m nltk.downloader stopwords
 
