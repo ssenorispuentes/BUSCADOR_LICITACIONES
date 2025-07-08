@@ -15,33 +15,36 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Instalar Chrome
-      run: |
-        sudo apt update
-        sudo apt install -y wget unzip xvfb libxi6 libgconf-2-4 libnss3 libasound2 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxss1 libxcomposite1 libxrandr2 libxdamage1 libgbm1 libxshmfence1
-        sudo apt install -y chromium-browser
-
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-
     - name: Instalar dependencias
       run: |
         rm -rf ~/.cache/pip
         pip install --upgrade pip
+        pip install beautifulsoup4  # Fuerza instalación directa
         pip install -r requirements.txt
-        pip install beautifulsoup4
         python -m spacy download es_core_news_sm
         python -m nltk.downloader stopwords
 
+    - name: Verificar instalación y acceso a bs4
+      run: |
+        echo "🧐 Verificando entorno..."
+        which python
+        which pip
+        python --version
+        pip --version
+        echo "📦 Verificando instalación de bs4..."
+        pip show beautifulsoup4
+        python -c "import bs4; print('✅ bs4 está disponible y funcionando')"
+
     - name: Ejecutar script de scraping
-      run: xvfb-run -a python main_scraping.py --usar_scraping
+      run: |
+        echo "🚀 Ejecutando main_scraping.py"
+        python main_scraping.py --usar_scraping
 
     - name: Subir CSV actualizado al repositorio
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
-        git add licitaciones.csv
+        git add datos_licitaciones_final/licitaciones.csv
         git commit -m "Actualizar CSV automáticamente"
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+
