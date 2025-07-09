@@ -41,15 +41,18 @@ def cargar_columns_ini(columns_file="./config/scraper_columns.ini"):
 # -------------------------------
 # Cargar datos
 # -------------------------------
-@st.cache_data
-def cargar_datos(output_dir):
-    filename = f"licitaciones.csv"
+
+
+@st.cache_data(show_spinner=False)
+def cargar_datos(output_dir, file_mtime):
+    filename = "licitaciones.csv"
     csv_path = os.path.join(output_dir, filename)
     if not os.path.exists(csv_path):
         return None, csv_path
     df = pd.read_csv(csv_path, sep="\t", encoding="utf-8-sig")
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     return df, csv_path
+
 
 # -------------------------------
 # Aplicar filtros principales
@@ -72,7 +75,10 @@ def main():
 
     output_dir = cargar_config()
     rename_dict, _ = cargar_columns_ini()
-    df, _ = cargar_datos(output_dir)
+    csv_path = os.path.join(output_dir, "licitaciones.csv")
+    file_mtime = os.path.getmtime(csv_path) if os.path.exists(csv_path) else 0
+    df, _ = cargar_datos(output_dir, file_mtime)
+
 
     if df is not None and not df.empty:
         df = df.rename(columns=rename_dict)
