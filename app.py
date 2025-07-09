@@ -72,6 +72,7 @@ def aplica_filtros_base(df, fecha_ini):
 def main():
     st.set_page_config(page_title="Buscador de Licitaciones Públicas", layout="wide", page_icon="📁")
     st.title("🔍 Buscador de Licitaciones Públicas")
+    st.markdown(f"🕒 Última actualización de la app: `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`")
 
     output_dir = cargar_config()
     rename_dict, _ = cargar_columns_ini()
