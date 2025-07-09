@@ -42,7 +42,6 @@ def cargar_columns_ini(columns_file="./config/scraper_columns.ini"):
 # Cargar datos
 # -------------------------------
 
-
 @st.cache_data(show_spinner=False)
 def cargar_datos(output_dir, file_mtime):
     filename = "licitaciones.csv"
@@ -52,7 +51,6 @@ def cargar_datos(output_dir, file_mtime):
     df = pd.read_csv(csv_path, sep="\t", encoding="utf-8-sig")
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     return df, csv_path
-
 
 # -------------------------------
 # Aplicar filtros principales
@@ -79,7 +77,6 @@ def main():
     csv_path = os.path.join(output_dir, "licitaciones.csv")
     file_mtime = os.path.getmtime(csv_path) if os.path.exists(csv_path) else 0
     df, _ = cargar_datos(output_dir, file_mtime)
-
 
     if df is not None and not df.empty:
         df = df.rename(columns=rename_dict)
@@ -213,10 +210,37 @@ def main():
                 if seleccionadas:
                     df_no_favoritos = df_no_favoritos[df_no_favoritos[col].fillna("").isin(seleccionadas)]
 
+    # Asegurar que CoincidePalabra existe en df_favoritos
     if "CoincidePalabra" not in df_favoritos.columns:
         df_favoritos["CoincidePalabra"] = False
         
-    df_filtrado_actual = pd.concat([df_favoritos.dropna(how='all', axis=1), df_no_favoritos.dropna(how='all', axis=1)], ignore_index=True).drop_duplicates()
+    # Combinar DataFrames de forma segura
+    if df_favoritos.empty and df_no_favoritos.empty:
+        df_filtrado_actual = pd.DataFrame()
+    elif df_favoritos.empty:
+        df_filtrado_actual = df_no_favoritos.copy()
+    elif df_no_favoritos.empty:
+        df_filtrado_actual = df_favoritos.copy()
+    else:
+        df_filtrado_actual = pd.concat([df_favoritos.dropna(how='all', axis=1), df_no_favoritos.dropna(how='all', axis=1)], ignore_index=True).drop_duplicates()
+
+    # Verificar que df_filtrado_actual no esté vacío
+    if df_filtrado_actual.empty:
+        st.warning("⚠️ No hay datos que coincidan con los filtros aplicados.")
+        st.stop()
+
+    # Asegurar que las columnas necesarias existen
+    columnas_necesarias = ["Favorito", "CoincidePalabra"]
+    for col in columnas_necesarias:
+        if col not in df_filtrado_actual.columns:
+            df_filtrado_actual[col] = False
+    
+    # Filtrar cols_mostrar para incluir solo columnas existentes
+    cols_existentes = [col for col in cols_mostrar if col in df_filtrado_actual.columns]
+    
+    # Crear df_style de forma segura
+    columnas_style = cols_existentes + ["Favorito", "CoincidePalabra"]
+    df_style = df_filtrado_actual[columnas_style].copy()
 
     def resaltar_filas(row):
         if row.get("Favorito", False):
@@ -226,51 +250,68 @@ def main():
         else:
             return [''] * len(row)
 
-    # Asegurar que las columnas necesarias existen
-    columnas_necesarias = ["Favorito", "CoincidePalabra"]
-    for col in columnas_necesarias:
-        if col not in df_filtrado_actual.columns:
-            df_filtrado_actual[col] = False
-    
-    # Crear df_style de forma segura
-    columnas_style = [col for col in cols_mostrar if col in df_filtrado_actual.columns] + ["Favorito", "CoincidePalabra"]
-    df_style = df_filtrado_actual[columnas_style]
-
+    # Convertir Favorito a emoji para mostrar
+    df_style["Favorito"] = df_style["Favorito"].apply(lambda x: "⭐" if x else "")
 
     formato_numerico = {col: "{:,.2f}".format for col in df_style.select_dtypes(include=['float', 'int']).columns}
 
     st.dataframe(
         df_style.style.format(formato_numerico).apply(resaltar_filas, axis=1),
-        column_config={"URL": st.column_config.LinkColumn("URL")},
+        column_config={"URL": st.column_config.LinkColumn("URL")} if "URL" in df_style.columns else {},
         hide_index=True,
         use_container_width=True
     )
 
     st.success(f"🎉 {len(df_filtrado_actual)} licitaciones disponibles")
 
+    # Botones de descarga con verificaciones adicionales
     col1, _, col2 = st.columns([1, 5, 1])
     with col1:
-        csv = df_filtrado_actual[cols_mostrar].drop(columns=["Favorito"], errors='ignore').to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Descargar licitaciones filtradas", data=csv, file_name="licitaciones_filtradas.csv", mime="text/csv")
+        try:
+            if cols_existentes:
+                csv_data = df_filtrado_actual[cols_existentes].drop(columns=["Favorito"], errors='ignore')
+                csv = csv_data.to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Descargar licitaciones filtradas", data=csv, file_name="licitaciones_filtradas.csv", mime="text/csv")
+            else:
+                st.warning("No hay columnas para descargar")
+        except Exception as e:
+            st.error(f"Error al preparar descarga: {e}")
+    
     with col2:
-        csv_fav = df_filtrado_actual[df_filtrado_actual['Favorito']][cols_mostrar].drop(columns=["Favorito"], errors='ignore').to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Descargar licitaciones favoritas", data=csv_fav, file_name="licitaciones_favoritas.csv", mime="text/csv")
+        try:
+            if "Favorito" in df_filtrado_actual.columns and not df_filtrado_actual[df_filtrado_actual["Favorito"]].empty:
+                favoritos_data = df_filtrado_actual[df_filtrado_actual['Favorito']]
+                if cols_existentes:
+                    csv_fav_data = favoritos_data[cols_existentes].drop(columns=["Favorito"], errors='ignore')
+                    csv_fav = csv_fav_data.to_csv(index=False).encode("utf-8")
+                    st.download_button("📥 Descargar licitaciones favoritas", data=csv_fav, file_name="licitaciones_favoritas.csv", mime="text/csv")
+                else:
+                    st.warning("No hay columnas para descargar favoritos")
+            else:
+                st.info("No hay favoritos para descargar")
+        except Exception as e:
+            st.error(f"Error al preparar descarga de favoritos: {e}")
 
+    # Búsqueda de actualizaciones en favoritos
     if "Favorito" in df_filtrado_actual.columns and not df_filtrado_actual[df_filtrado_actual["Favorito"]].empty:
         if st.button("🔍 Buscar actualizaciones en licitaciones favoritas"):
             with st.spinner("Buscando actualizaciones en favoritos, esto puede tardar..."):
                 resultado = buscar_actualizaciones_favs(df_filtrado_actual[df_filtrado_actual["Favorito"]])
                 if resultado is not None:
-                    if resultado['Actualización'].sum() > 0:
+                    if 'Actualización' in resultado.columns and resultado['Actualización'].sum() > 0:
                         st.success(f"✅ Se encontraron {resultado['Actualización'].sum()} licitaciones con actualizaciones")
                     else:
                         st.error(f"❌ No se encontraron actualizaciones")
-                    st.dataframe(resultado[['Titulo', 'Nº Expediente', 'URL', 'Actualización']],
-                                 column_config={"URL": st.column_config.LinkColumn("URL")},
-                                 hide_index=True,
-                                 use_container_width=True)
+                    
+                    # Mostrar resultados solo si hay columnas válidas
+                    cols_resultado = [col for col in ['Titulo', 'Nº Expediente', 'URL', 'Actualización'] if col in resultado.columns]
+                    if cols_resultado:
+                        st.dataframe(resultado[cols_resultado],
+                                     column_config={"URL": st.column_config.LinkColumn("URL")} if "URL" in cols_resultado else {},
+                                     hide_index=True,
+                                     use_container_width=True)
 
-                    if resultado['Actualización'].sum() > 0:
+                    if 'Actualización' in resultado.columns and resultado['Actualización'].sum() > 0:
                         st.markdown("##### 📄 Detalles de actualizaciones por licitación")
                         for idx, row in resultado.iterrows():
                             url = row.get("URL", f"Licitación {idx}")
@@ -285,21 +326,23 @@ def main():
                                            file_name="actualizaciones_favoritas.csv",
                                            mime="text/csv")
 
-                        
     # Notas al pie
     st.markdown("---")
     st.caption("""
     **Fuente de datos:** [Portal de Contratación del Estado Español](https://contrataciondelestado.es/wps/portal/!ut/p/b1/jc7LDoIwEAXQb-EDzExLqbAEyqMEBeWh7YawMAbDY2P8fqtxKzq7m5ybuaBBbQhB16OUEBvOoOf-MVz7-7DM_fjKmncsKsIwTim6lS2Q5qJpeGpi4higDHDskLVZW_JKJogyjUXeEAcTyv_r45fz8Vf_BHqd0A9Ym_gGKxv26TJdQBm27fw2OvjSs7EIjuZRVu7qMqEEkUENSgQw6TH25I31vmU9AXx4is8!/dl4/d5/L2dBISEvZ0FBIS9nQSEh/pw/Z7_AVEQAI930OBRD02JPMTPG21004/act/id=0/p=javax.servlet.include.path_info=QCPjspQCPbusquedaQCPFormularioBusqueda.jsp/610892277200/-/), [Junta de Andalucía](https://www.juntadeandalucia.es/haciendayadministracionpublica/apl/pdc-front-publico/perfiles-licitaciones/buscador-general), [Contratos públicos Comunidad de Madrid](https://contratos-publicos.comunidad.madrid), [Contratos Euskadi](https://www.uragentzia.euskadi.eus/webura00-contents/es/contenidos/informacion/widget_kontratazio_ura/es_def/widget-contratacion/anuncios-abiertos.html)      
     **Nota:** Los resultados pueden estar limitados por filtros aplicados en scraping. Para búsquedas más avanzadas, visita el portal directamente.
     """) 
+
 def buscar_actualizaciones_favs(favoritos_df):
-    from web_scraping.WS_licitaciones_favs import ScraperLicFav
     try:
+        from web_scraping.WS_licitaciones_favs import ScraperLicFav
+        
         if 'Fecha Ejecución Proceso' in favoritos_df.columns:
             fecha_ultima_eje = pd.to_datetime(favoritos_df['Fecha Ejecución Proceso'], errors='coerce').max()
         else:
             st.warning("⚠️ No se encontró 'Fecha Ejecución Proceso' en las filas favoritas.")
             return None
+        
         hoy = datetime.today().date()
         config_path = "./config/scraper_config.ini"
 
@@ -314,11 +357,12 @@ def buscar_actualizaciones_favs(favoritos_df):
         resultado_df = scraper.ejecutar()
 
         return resultado_df
+    except ImportError:
+        st.error("❌ Error: No se pudo importar el módulo de scraping")
+        return None
     except Exception as e:
         st.error(f"❌ Error buscando actualizaciones: {e}")
         return None
-
-
 
 if __name__ == "__main__":
     main()
