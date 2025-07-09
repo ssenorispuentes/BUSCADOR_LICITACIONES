@@ -225,8 +225,17 @@ def main():
         else:
             return [''] * len(row)
 
-    df_style = df_filtrado_actual[cols_mostrar + ["Favorito", "CoincidePalabra"]] if "Favorito" in df_filtrado_actual.columns else df_filtrado_actual[cols_mostrar + ["CoincidePalabra"]]
-    df_style["Favorito"] = df_style["Favorito"].apply(lambda x: "⭐" if x else "")
+    columnas_extra = []
+    if "Favorito" in df_filtrado_actual.columns:
+        columnas_extra.append("Favorito")
+    if "CoincidePalabra" in df_filtrado_actual.columns:
+        columnas_extra.append("CoincidePalabra")
+    
+    df_style = df_filtrado_actual[[col for col in cols_mostrar + columnas_extra if col in df_filtrado_actual.columns]]
+    
+    if "Favorito" in df_style.columns:
+        df_style["Favorito"] = df_style["Favorito"].apply(lambda x: "⭐" if x else "")
+
 
     formato_numerico = {col: "{:,.2f}".format for col in df_style.select_dtypes(include=['float', 'int']).columns}
 
