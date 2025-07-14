@@ -2,7 +2,7 @@ name: Ejecutar scraping y actualizar CSV
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # Todos los dias a las 06:00 UTC
+    - cron: '0 6 * * 1'  # Todos los dias a las 06:00 UTC
   workflow_dispatch:
 
 jobs:
